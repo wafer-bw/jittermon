@@ -1,0 +1,20 @@
+edition = "2023";
+
+package poll;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/wafer-bw/jittermon/internal/pb/pollpb";
+
+// TODO: can this just be merged with PollRequest into PollMessage?
+message PollResponse {
+    // The identity of the responding peer.
+    string id = 1;
+
+    // The time this message was dispatched from the responding peer.
+    google.protobuf.Timestamp timestamp = 2;
+
+    // The jitter observed by the responding peer on incoming requests.
+    google.protobuf.Duration jitter = 3;
+}
