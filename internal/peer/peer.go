@@ -11,30 +11,59 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	downstreamJitterKey string = "downstreamJitter"
+	upstreamJitterKey   string = "upstreamJitter"
+	rttKey              string = "rtt"
+)
+
 var _ pollpb.PollServiceServer = (*Peer)(nil)
 var _ DoPoller = (*Peer)(nil)
 
-type Peer struct {
-	id  string
-	log *slog.Logger
+// Recorder is capable of persisting a keyed duration value for an interaction
+// between two peers in some storage media or mechanism.
+//
+// src: source peer ID.
+// dst: destination peer ID.
+// key: identifies the duration value's meaning.
+// tsm: observation timestamp of the interaction.
+// dur: duration value (e.g. jitter, rtt, etc).
+//
+// TODO: expand out var names probably.
+type Recorder interface {
+	Record(src, dst PeerID, key string, tsm time.Time, dur time.Duration) error
+}
 
-	// TODO: record upstream & downstream jitter into a recorder interface.
+type PeerID string
+
+func (p PeerID) String() string {
+	return string(p)
+}
+
+type Peer struct {
+	id             PeerID
+	log            *slog.Logger
+	jitter         Recorder
+	rtt            Recorder
 	requestBuffers PeerRequestBuffers
 
 	pollpb.UnimplementedPollServiceServer
 }
 
-func NewPeer(ID string, log *slog.Logger) (*Peer, error) {
+// TODO: switch to functional options or options struct?
+func NewPeer(ID string, jitRecorder, rttRecorder Recorder, log *slog.Logger) (*Peer, error) {
 	return &Peer{
-		id:             ID,
+		id:             PeerID(ID),
 		log:            log,
+		jitter:         jitRecorder,
+		rtt:            rttRecorder,
 		requestBuffers: PeerRequestBuffers{},
 	}, nil
 }
 
 // Poll handles incoming poll requests.
 func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
-	receivedAt := time.Now()
+	now := time.Now()
 
 	sentAtPb := req.GetTimestamp()
 	if sentAtPb == nil {
@@ -43,21 +72,34 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 	}
 	sentAt := sentAtPb.AsTime()
 
-	peerID := req.GetId()
-	if peerID == "" {
+	peerIDPb := req.GetId()
+	if peerIDPb == "" {
 		p.log.Error("poll request with no peer ID")
 		return nil, fmt.Errorf("peer ID is required")
 	}
+	peerID := PeerID(peerIDPb)
 
-	p.requestBuffers.Add(peerID, PeerRequest{sentAt: sentAt, receivedAt: receivedAt})
+	p.requestBuffers.Add(peerID, PeerRequest{sentAt: sentAt, receivedAt: now})
 
 	resp := &pollpb.PollResponse{}
-	resp.SetId(p.id)
+	resp.SetId(p.id.String())
 
-	jitter, ok := p.requestBuffers.Jitter(peerID) // downstream jitter to this peer.
-	if ok {
-		p.log.Info(jitter.String(), "id", p.id, "peerId", peerID)
-		resp.SetJitter(durationpb.New(jitter))
+	jitter, ok := p.requestBuffers.Jitter(peerID)
+	if !ok {
+		return resp, nil
+	}
+
+	p.log.Debug("", "src", peerID, "dst", p.id, downstreamJitterKey, jitter)
+
+	resp.SetJitter(durationpb.New(jitter))
+
+	if p.jitter != nil {
+		// record downstream jitter relative to this peer.
+		if err := p.jitter.Record(peerID, p.id, downstreamJitterKey, now, jitter); err != nil {
+			p.log.Error("failed to record downstream jitter", "err", err)
+		}
+	} else {
+		p.log.Warn("no jitter recorder")
 	}
 
 	return resp, nil
@@ -68,25 +110,51 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 	// TODO: may want to accept addr as an argument here for easily identifying
 	// a failing peer in error messages.
 
-	s := time.Now()
+	now := time.Now()
+
 	req := &pollpb.PollRequest{}
-	req.SetId(p.id)
-	req.SetTimestamp(timestamppb.New(s))
+	req.SetId(p.id.String())
+	req.SetTimestamp(timestamppb.New(now))
 
 	resp, err := client.Poll(ctx, req)
 	if err != nil {
 		p.log.Warn("poll failed", "err", err)
 		return err
 	}
-	rtt := time.Since(s)
+	rtt := time.Since(now)
 
 	jitterPb := resp.GetJitter()
 	if jitterPb == nil {
 		return fmt.Errorf("no jitter in response")
 	}
-	jitter := jitterPb.AsDuration() // upstream jitter from this peer.
+	jitter := jitterPb.AsDuration()
 
-	p.log.Info("", "rtt", rtt, "jitter", jitter)
+	peerIDPb := req.GetId()
+	if peerIDPb == "" {
+		return fmt.Errorf("no peer ID in request")
+	}
+	peerID := PeerID(peerIDPb)
+
+	if p.jitter != nil {
+		// record upstream jitter relative to this peer.
+		if err := p.jitter.Record(p.id, peerID, upstreamJitterKey, now, jitter); err != nil {
+			p.log.Error("failed to record upstream jitter", "err", err)
+		}
+	} else {
+		p.log.Warn("no jitter recorder")
+	}
+
+	if p.rtt != nil {
+		// record round-trip time between this peer and the remote peer.
+		if err := p.rtt.Record(p.id, peerID, rttKey, now, rtt); err != nil {
+			p.log.Error("failed to record rtt", "err", err)
+		}
+	} else {
+		p.log.Warn("no rtt recorder")
+	}
+
+	p.log.Debug("", "src", p.id, "dst", peerID, rttKey, rtt)
+	p.log.Debug("", "src", p.id, "dst", peerID, upstreamJitterKey, jitter)
 
 	return nil
 }

@@ -36,9 +36,9 @@ func (b *RequestBuffer) Push(e PeerRequest) {
 	}
 }
 
-type PeerRequestBuffers map[string]RequestBuffer
+type PeerRequestBuffers map[PeerID]RequestBuffer
 
-func (b PeerRequestBuffers) Jitter(peerID string) (time.Duration, bool) {
+func (b PeerRequestBuffers) Jitter(peerID PeerID) (time.Duration, bool) {
 	buffer, ok := b[peerID]
 	if !ok {
 		return 0, false
@@ -47,7 +47,7 @@ func (b PeerRequestBuffers) Jitter(peerID string) (time.Duration, bool) {
 	return buffer.Jitter()
 }
 
-func (b PeerRequestBuffers) Add(peerID string, e PeerRequest) {
+func (b PeerRequestBuffers) Add(peerID PeerID, e PeerRequest) {
 	buffer, ok := b[peerID]
 	if !ok {
 		buffer = RequestBuffer{}

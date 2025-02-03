@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/peer"
+	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
 // TODO: switch to cobra for more ergonomic CLI.
@@ -21,6 +22,7 @@ var (
 	sendAddrs  = flag.String("s", "", "comma separated addresses to send to")
 	interval   = flag.Duration("i", 1*time.Second, "polling interval")
 	logLevel   = flag.String("L", "INFO", "log level")
+	write      = flag.Bool("w", false, "write to file(s)")
 	slogLevel  slog.Level
 )
 
@@ -48,12 +50,16 @@ func main() {
 	ctx := context.Background()
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slogLevel}))
 
-	// TODO: prometheus.
-
 	shutdownTimeout := 250 * time.Millisecond
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 
-	p, err := peer.NewPeer(uuid.New().String(), log)
+	var jitterCSV, rttCSV peer.Recorder
+	if *write {
+		jitterCSV = recorder.CSV{}
+		rttCSV = recorder.CSV{}
+	}
+
+	p, err := peer.NewPeer(uuid.New().String(), jitterCSV, rttCSV, log)
 	if err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
