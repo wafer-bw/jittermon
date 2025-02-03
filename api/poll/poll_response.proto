@@ -7,7 +7,6 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/wafer-bw/jittermon/internal/pb/pollpb";
 
-// TODO: can this just be merged with PollRequest into PollMessage?
 message PollResponse {
     // The identity of the responding peer.
     string id = 1;
