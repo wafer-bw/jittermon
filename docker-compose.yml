@@ -1,0 +1,45 @@
+services:
+  peer1:
+    image: jittermon:latest
+    container_name: peer1
+    networks:
+      - jittermon-network
+    ports:
+      - "8082:8082"
+    command: -l :8080 -s peer2:8081 -m :8082
+
+  peer2:
+    image: jittermon:latest
+    container_name: peer2
+    networks:
+      - jittermon-network
+    command: -l :8081 -s peer1:8080
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    networks:
+      - jittermon-network
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./demo/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command: --config.file=/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - jittermon-network
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./demo/grafana/provisioning:/etc/grafana/provisioning
+      - ./demo/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=demo
+      - GF_SECURITY_ADMIN_PASSWORD=demo
+
+networks:
+  jittermon-network:
+    driver: bridge

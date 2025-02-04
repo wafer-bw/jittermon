@@ -25,13 +25,13 @@ func (s *Server) Start(ctx context.Context) error {
 		grpc.KeepaliveParams(keepalive.ServerParameters{
 			MaxConnectionAge:      5 * time.Second,
 			MaxConnectionAgeGrace: 1 * time.Second,
-			MaxConnectionIdle:     1 * time.Second,
+			MaxConnectionIdle:     5 * time.Second,
 		}),
-		grpc.MaxConcurrentStreams(1),
-		grpc.MaxRecvMsgSize(1024),
-		grpc.MaxSendMsgSize(1024),
+		// grpc.MaxConcurrentStreams(1), // TODO: re-enable.
+		// grpc.MaxRecvMsgSize(1024), // TODO: re-enable.
+		// grpc.MaxSendMsgSize(1024), // TODO: re-enable.
 		grpc.ConnectionTimeout(5*time.Second),
-		grpc.MaxHeaderListSize(1024),
+		// grpc.MaxHeaderListSize(1024), // TODO: re-enable.
 	)
 	s.server = server
 

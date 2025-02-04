@@ -27,3 +27,6 @@ go.work.sum
 # Report files
 *.csv
 *.json
+
+# Include tracked grafana dashboards
+!demo/grafana/**/*.json

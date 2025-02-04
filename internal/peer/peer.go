@@ -30,6 +30,7 @@ var _ DoPoller = (*Peer)(nil)
 // dur: duration value (e.g. jitter, rtt, etc).
 //
 // TODO: expand out var names probably.
+// TODO: maybe make src/dst be local/remote instead?
 type Recorder interface {
 	Record(src, dst PeerID, key string, tsm time.Time, dur time.Duration) error
 }
@@ -98,8 +99,6 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 		if err := p.jitter.Record(peerID, p.id, downstreamJitterKey, now, jitter); err != nil {
 			p.log.Error("failed to record downstream jitter", "err", err)
 		}
-	} else {
-		p.log.Warn("no jitter recorder")
 	}
 
 	return resp, nil
@@ -129,7 +128,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 	}
 	jitter := jitterPb.AsDuration()
 
-	peerIDPb := req.GetId()
+	peerIDPb := resp.GetId()
 	if peerIDPb == "" {
 		return fmt.Errorf("no peer ID in request")
 	}
@@ -140,8 +139,6 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 		if err := p.jitter.Record(p.id, peerID, upstreamJitterKey, now, jitter); err != nil {
 			p.log.Error("failed to record upstream jitter", "err", err)
 		}
-	} else {
-		p.log.Warn("no jitter recorder")
 	}
 
 	if p.rtt != nil {
@@ -149,8 +146,6 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 		if err := p.rtt.Record(p.id, peerID, rttKey, now, rtt); err != nil {
 			p.log.Error("failed to record rtt", "err", err)
 		}
-	} else {
-		p.log.Warn("no rtt recorder")
 	}
 
 	p.log.Debug("", "src", p.id, "dst", peerID, rttKey, rtt)
