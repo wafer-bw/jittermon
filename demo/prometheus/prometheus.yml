@@ -41,4 +41,4 @@ scrape_configs:
   follow_redirects: true
   static_configs:
   - targets:
-    - peer1:8082
+    - jittermon:8082

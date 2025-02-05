@@ -2,48 +2,42 @@ package main
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/peer"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
-// TODO: switch to cobra for more ergonomic CLI.
-var (
-	listenAddr  = flag.String("l", "", "address to listen on")
-	sendAddrs   = flag.String("s", "", "comma separated addresses to send to")
-	metricsAddr = flag.String("m", "", "addresses to expose metrics on")
-	interval    = flag.Duration("i", 1*time.Second, "polling interval")
-	logLevel    = flag.String("L", "INFO", "log level")
-	write       = flag.Bool("w", false, "write to file(s)")
-	slogLevel   slog.Level
-)
+var conf config
+
+type config struct {
+	ListenAddr  string        `split_words:"true" default:":8080"`
+	SendAddrs   []string      `split_words:"true" default:":8081"`
+	MetricsAddr string        `split_words:"true" default:""`
+	Interval    time.Duration `split_words:"true" default:"1s"`
+	LogLevel    slog.Level    `split_words:"true" default:"INFO"`
+	Write       bool          `split_words:"true" default:"false"`
+}
 
 func init() {
-	flag.Parse()
-
-	if err := slogLevel.UnmarshalText([]byte(*logLevel)); err != nil {
-		fmt.Println("invalid log level")
-	}
+	envconfig.MustProcess("JITTERMON", &conf)
 }
 
 // TODO: better convergance of configured recorders based on provided flags.
 func main() {
 	ctx := context.Background()
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slogLevel}))
+	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: conf.LogLevel}))
 	shutdownTimeout := 250 * time.Millisecond
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 
 	var jitterCSV, rttCSV peer.Recorder
-	if *write {
+	if conf.Write {
 		jitterCSV = recorder.CSV{}
 		rttCSV = recorder.CSV{}
 	}
@@ -53,8 +47,8 @@ func main() {
 	group := graceful.Group{}
 
 	var prometheus peer.Recorder
-	if *metricsAddr != "" {
-		r := &recorder.Prometheus{Addr: *metricsAddr}
+	if conf.MetricsAddr != "" {
+		r := &recorder.Prometheus{Addr: conf.MetricsAddr}
 		prometheus = r
 		group = append(group, r)
 	}
@@ -65,21 +59,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *sendAddrs != "" {
-		addresses := strings.Split(*sendAddrs, ",")
-		for _, addr := range addresses {
+	if len(conf.SendAddrs) != 0 {
+		for _, addr := range conf.SendAddrs {
 			group = append(group, &peer.Client{
 				Addr:     addr,
 				Poller:   p,
-				Interval: *interval,
+				Interval: conf.Interval,
 				Log:      log,
 			})
 		}
 	}
 
-	if *listenAddr != "" {
+	if conf.ListenAddr != "" {
 		group = append(group, &peer.Server{
-			Addr:    *listenAddr,
+			Addr:    conf.ListenAddr,
 			Handler: p,
 			Log:     log,
 		})

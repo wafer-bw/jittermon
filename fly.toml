@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for jittermon on 2025-02-04T16:18:33-05:00
+# fly.toml app configuration file generated for jittermon on 2025-02-05T17:14:22-05:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -8,26 +8,23 @@ primary_region = 'yyz'
 kill_signal = 'SIGINT'
 kill_timeout = '1m0s'
 
-[experimental]
-  cmd = ['-s', '0.0.0.0:8081', '-l', '0.0.0.0:8080']
-
 [build]
-  ignorefile = ".dockerignore"
+  dockerfile = 'Dockerfile'
 
 [env]
-  WAFERBW = 'nothing'
+  JITTERMON_INTERVAL = '1s'
+  JITTERMON_LISTEN_ADDR = ':8080'
+  JITTERMON_LOG_LEVEL = 'INFO'
 
 [[services]]
   protocol = 'tcp'
   internal_port = 8080
 
   [[services.ports]]
-    force_https = false
-    port = '8080'
-    handlers = []
+    port = 8080
 
-  [services.ports.http_options]
-    h2_backend = true
+    [services.ports.http_options]
+      h2_backend = true
 
 [[vm]]
   size = 'shared-cpu-1x'

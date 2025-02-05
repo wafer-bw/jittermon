@@ -1,21 +1,38 @@
 # jittermon
 
-## Demo
-This demo will run two jittermon peers within Docker that talk to eachother. It
-uses a Grafana dashboard to visualize metrics.
+```sh
+# build docker image
+docker build -t jittermon .
+# start the demo
+docker compose -f demo/docker-compose-local.yml up -d
+# http://localhost:3000/d/aec2tnhcwbuo0b
+docker compose -f demo/docker-compose-local.yml down
+```
 
-Follow these steps to see a demo of jittermon in action:
-1. Install [Docker](https://docs.docker.com/engine/install/)
-2. Run the following commands
-    ```sh
-    docker build -t jittermon . # build docker image
-    docker compose up -d        # start the demo
-    ```
-3. Go to http://localhost:3000/d/aec2tnhcwbuo0b in your browser
-4. Log in with username `demo` & password `demo`.
+```sh
+# build docker image
+docker build -t jittermon .
+# deploy to fly
+fly deploy
+# start the demo
+docker compose -f demo/docker-compose-fly.yml up -d
+# http://localhost:3000/d/aec2tnhcwbuo0b
+docker compose -f demo/docker-compose-fly.yml down
+```
+
+## Notes
+- Won't work in fly.io with a shared IPv4, you will need a dedicated one which
+  costs $2/mo.
 
 ## TODOs
-- Works if I replace `cmd = ['-s', '0.0.0.0:8081'` with my public ip now...
-- Use fly secrets to store public IP and access it via env var for host.
-- Make new demo dockercompose that uses fly as remote peer.
+- config defines which metrics to collect
 - Organize folders, nesting stuff like fly and docker out of root.
+- Overhead of gRPC vs ICMP seems to be like 20ms, likely want to add a ms trim
+  flag to trim out the protocol overhead. More reading [here](https://bbengfort.github.io/2016/11/ping-vs-grpc/).
+- Add ICMP RTT.
+- Handle all possible I/O outside of req/resp in a separate go routine reading
+  from a channel.
+- Look into establishing streaming connections to avoid TCP?
+- It looks like there is two different streams of RTT/Jitter levels, why is it
+  like that?
+- Cobra CLI
