@@ -1,5 +1,5 @@
 # build binary
-FROM golang:1.23.3-bullseye AS builder
+FROM golang:1.23.3 AS builder
 RUN apt-get update && apt-get install -yq \
     apt-transport-https \
     build-essential \

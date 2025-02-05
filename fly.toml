@@ -9,29 +9,25 @@ kill_signal = 'SIGINT'
 kill_timeout = '1m0s'
 
 [experimental]
-  cmd = ['-l', ':8080', '-s', 'http://99.245.191.45:8081']
+  cmd = ['-s', '0.0.0.0:8081', '-l', '0.0.0.0:8080']
 
 [build]
   ignorefile = ".dockerignore"
 
 [env]
-  NO_OP = 'nothing'
+  WAFERBW = 'nothing'
 
 [[services]]
   protocol = 'tcp'
   internal_port = 8080
 
   [[services.ports]]
-    port = 443
-    handlers = ['tls']
+    force_https = false
+    port = '8080'
+    handlers = []
 
-    [services.ports.tls_options]
-      alpn = ['h2']
-
-  [services.concurrency]
-    type = 'connections'
-    hard_limit = 10
-    soft_limit = 5
+  [services.ports.http_options]
+    h2_backend = true
 
 [[vm]]
   size = 'shared-cpu-1x'

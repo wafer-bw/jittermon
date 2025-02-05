@@ -39,10 +39,10 @@ func (r *Prometheus) Record(src, dst peer.PeerID, key string, tsm time.Time, dur
 			Help:      fmt.Sprintf("A histogram of %s durations", key),
 			Buckets:   []float64{0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1},
 		}, []string{"src", "dst"}) // TODO: change to local/remote?
-		r.histograms[k] = hist
 		if err := prometheus.Register(hist); err != nil {
 			return err
 		}
+		r.histograms[k] = hist
 	}
 
 	count, ok := r.counters[k]
@@ -52,10 +52,10 @@ func (r *Prometheus) Record(src, dst peer.PeerID, key string, tsm time.Time, dur
 			Name:      fmt.Sprintf("%s_requests_total", key),
 			Help:      fmt.Sprintf("Total number of %s observations", key),
 		}, []string{"src", "dst"}) // TODO: change to local/remote?
-		r.counters[k] = count
 		if err := prometheus.Register(count); err != nil {
 			return err
 		}
+		r.counters[k] = count
 	}
 
 	hist.WithLabelValues(string(src), string(dst)).Observe(dur.Seconds())
