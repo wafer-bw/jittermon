@@ -17,4 +17,5 @@ Follow these steps to see a demo of jittermon in action:
 ## TODOs
 - Works if I replace `cmd = ['-s', '0.0.0.0:8081'` with my public ip now...
 - Use fly secrets to store public IP and access it via env var for host.
+- Make new demo dockercompose that uses fly as remote peer.
 - Organize folders, nesting stuff like fly and docker out of root.
