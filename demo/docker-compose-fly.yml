@@ -23,6 +23,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
+      - prometheus-data:/prometheus
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     command: --config.file=/etc/prometheus/prometheus.yml
 
@@ -33,6 +34,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
+      - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     environment:
@@ -42,3 +44,7 @@ services:
 networks:
   jittermon-network:
     driver: bridge
+
+volumes:
+  grafana-data:
+  prometheus-data:

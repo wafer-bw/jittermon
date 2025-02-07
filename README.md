@@ -36,3 +36,4 @@ docker compose -f demo/docker-compose-fly.yml down
 - It looks like there is two different streams of RTT/Jitter levels, why is it
   like that?
 - Cobra CLI
+- grafana rate inteval vs range
