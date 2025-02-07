@@ -3,8 +3,8 @@ package peer
 import "time"
 
 type PeerRequest struct {
-	sentAt     time.Time
-	receivedAt time.Time
+	SentAt     time.Time
+	ReceivedAt time.Time
 }
 
 type RequestBuffer []PeerRequest
@@ -16,12 +16,12 @@ func (b RequestBuffer) Jitter() (time.Duration, bool) {
 
 	e1, e2, e3 := b[0], b[1], b[2]
 
-	sendInterval1 := e2.sentAt.Sub(e1.sentAt)
-	sendInterval2 := e3.sentAt.Sub(e2.sentAt)
+	sendInterval1 := e2.SentAt.Sub(e1.SentAt)
+	sendInterval2 := e3.SentAt.Sub(e2.SentAt)
 	sendJitter := sendInterval2 - sendInterval1
 
-	receiveInterval1 := e2.receivedAt.Sub(e1.receivedAt)
-	receiveInterval2 := e3.receivedAt.Sub(e2.receivedAt)
+	receiveInterval1 := e2.ReceivedAt.Sub(e1.ReceivedAt)
+	receiveInterval2 := e3.ReceivedAt.Sub(e2.ReceivedAt)
 	receiveJitter := receiveInterval2 - receiveInterval1
 
 	jitter := (receiveJitter - sendJitter).Abs()

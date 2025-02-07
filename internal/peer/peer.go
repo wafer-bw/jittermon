@@ -80,7 +80,7 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 	}
 	peerID := PeerID(peerIDPb)
 
-	p.requestBuffers.Add(peerID, PeerRequest{sentAt: sentAt, receivedAt: now})
+	p.requestBuffers.Add(peerID, PeerRequest{SentAt: sentAt, ReceivedAt: now})
 
 	resp := &pollpb.PollResponse{}
 	resp.SetId(p.id.String())
@@ -120,6 +120,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 		p.log.Warn("poll failed", "err", err)
 		return err
 	}
+
 	rtt := time.Since(now)
 
 	jitterPb := resp.GetJitter()
@@ -148,7 +149,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 		}
 	}
 
-	p.log.Debug("", "src", p.id, "dst", peerID, rttKey, rtt)
+	p.log.Info("", "src", p.id, "dst", peerID, rttKey, rtt) // TODO: review this result.
 	p.log.Debug("", "src", p.id, "dst", peerID, upstreamJitterKey, jitter)
 
 	return nil
