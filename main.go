@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 	"syscall"
 	"time"
 
@@ -53,7 +54,8 @@ func main() {
 		group = append(group, r)
 	}
 
-	p, err := peer.NewPeer(uuid.New().String(), prometheus, prometheus, log)
+	pid := strings.Split(uuid.New().String(), "-")[1]
+	p, err := peer.NewPeer(pid, prometheus, prometheus, log)
 	if err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
