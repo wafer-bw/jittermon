@@ -1,12 +1,12 @@
 global:
-  scrape_interval: 5s
+  evaluation_interval: 2s
+  scrape_interval: 2s
   scrape_timeout: 1s
   scrape_protocols:
   - OpenMetricsText1.0.0
   - OpenMetricsText0.0.1
   - PrometheusText1.0.0
   - PrometheusText0.0.4
-  evaluation_interval: 5s
 runtime:
   gogc: 75
 alerting:
@@ -31,7 +31,7 @@ scrape_configs:
   - targets:
     - localhost:9090
 - job_name: jittermon
-  scrape_interval: 1s
+  scrape_interval: 2s
   scrape_timeout: 1s
   honor_timestamps: true
   track_timestamps_staleness: false
