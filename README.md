@@ -29,11 +29,12 @@ docker compose -f demo/docker-compose-fly.yml down
   costs $2/mo.
 
 ## TODOs
-- config defines which metrics to collect
 - better ergonomics for recorders
-- Organize folders, nesting stuff like fly and docker out of root.
-- Use ICMP for RTT?
-- Handle all possible I/O outside of req/resp in a separate go routine reading
-  from a channel?
-- Look into establishing streaming connections to avoid TCP?
-- Cobra CLI
+  - config defines which metrics to collect
+- investiage possibe improvements
+  - Handle all possible I/O outside of req/resp in a separate go routine reading
+    from a channel?
+- long term nice to have
+  - Use ICMP for RTT?
+  - Look into establishing streaming connections to avoid TCP?
+  - Cobra CLI
