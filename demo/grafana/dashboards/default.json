@@ -244,7 +244,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "(sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval])) - sum by (src) (increase(jittermon_packetrecv_requests_total[$__rate_interval]))) / sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval]))",
+          "expr": "(sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval])) - sum by (src) (increase(jittermon_packetrecv_requests_total[$__rate_interval]))) / sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval])) > 0",
           "hide": false,
           "instant": false,
           "legendFormat": "packet loss",
