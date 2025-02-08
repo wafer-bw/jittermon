@@ -10,6 +10,8 @@ type PeerRequest struct {
 type RequestBuffer []PeerRequest
 
 func (b RequestBuffer) Jitter() (time.Duration, bool) {
+	// TODO: there may be a more optimal way to do this math.
+
 	if len(b) <= 2 {
 		return 0, false
 	}
@@ -24,9 +26,7 @@ func (b RequestBuffer) Jitter() (time.Duration, bool) {
 	receiveInterval2 := e3.ReceivedAt.Sub(e2.ReceivedAt)
 	receiveJitter := receiveInterval2 - receiveInterval1
 
-	jitter := (receiveJitter - sendJitter).Abs()
-
-	return jitter, true
+	return (receiveJitter - sendJitter).Abs(), true
 }
 
 func (b *RequestBuffer) Push(e PeerRequest) {
@@ -48,11 +48,7 @@ func (b PeerRequestBuffers) Jitter(peerID PeerID) (time.Duration, bool) {
 }
 
 func (b PeerRequestBuffers) Add(peerID PeerID, e PeerRequest) {
-	buffer, ok := b[peerID]
-	if !ok {
-		buffer = RequestBuffer{}
-	}
-
+	buffer := b[peerID]
 	buffer.Push(e)
 	b[peerID] = buffer
 }
