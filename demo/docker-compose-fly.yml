@@ -13,7 +13,6 @@ services:
       - JITTERMON_INTERVAL=1s
       - JITTERMON_LISTEN_ADDR=:8081
       - JITTERMON_METRICS_ADDR=:8082
-      - JITTERMON_WRITE=false
     env_file:
       - .env
 
