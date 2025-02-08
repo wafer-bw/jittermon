@@ -31,10 +31,10 @@ docker compose -f demo/docker-compose-fly.yml down
 ## TODOs
 - better ergonomics for recorders
   - config defines which metrics to collect
-- investiage possibe improvements
-  - Handle all possible I/O outside of req/resp in a separate go routine reading
-    from a channel?
+- Handle all possible I/O outside of req/resp in a separate go routine reading
+  from a channel?
 - long term nice to have
+  - checks workflow only runs when go code changes
   - Use ICMP for RTT?
   - Look into establishing streaming connections to avoid TCP?
   - Cobra CLI

@@ -44,6 +44,8 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
           check-latest: true
+      - name: Run go generate
+        run: go generate ./... && git diff --exit-code
       - name: Run go build
         run: go build -o /dev/null ./...
 
