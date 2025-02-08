@@ -2,6 +2,10 @@ package peer_test
 
 import (
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	"github.com/wafer-bw/jittermon/internal/peer"
 )
 
 func TestPeerRequestBuffers_Jitter(t *testing.T) {
@@ -130,27 +134,27 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 	// 	require.Equal(t, 6*time.Millisecond, jitter)
 	// })
 
-	// t.Run("negates delayed send jitter from hastened receive jitter", func(t *testing.T) {
-	// 	t.Parallel()
+	t.Run("negates delayed send jitter from hastened receive jitter", func(t *testing.T) {
+		t.Parallel()
 
-	// 	pid := peer.PeerID("1")
-	// 	now := time.Now()
-	// 	b := peer.PeerRequestBuffers{}
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now,
-	// 		R: now.Add(50 * time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(1 * time.Second),
-	// 		R: now.Add(1*time.Second + 50*time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(2*time.Second + 2*time.Millisecond),
-	// 		R: now.Add(2*time.Second + 46*time.Millisecond),
-	// 	})
+		pid := peer.PeerID("1")
+		now := time.Now()
+		b := peer.PeerRequestBuffers{}
+		b.Sample(pid, peer.PeerRequest{
+			S: now,
+			R: now.Add(50 * time.Millisecond),
+		})
+		b.Sample(pid, peer.PeerRequest{
+			S: now.Add(1 * time.Second),
+			R: now.Add(1*time.Second + 50*time.Millisecond),
+		})
+		b.Sample(pid, peer.PeerRequest{
+			S: now.Add(2*time.Second + 2*time.Millisecond),
+			R: now.Add(2*time.Second + 46*time.Millisecond),
+		})
 
-	// 	jitter, ok := b.Jitter(pid)
-	// 	require.True(t, ok)
-	// 	require.Equal(t, 375*time.Microsecond, jitter)
-	// })
+		jitter, ok := b.Jitter(pid)
+		require.True(t, ok)
+		require.Equal(t, 375*time.Microsecond, jitter)
+	})
 }
