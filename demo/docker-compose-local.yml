@@ -18,7 +18,7 @@ services:
     networks:
       - jittermon-network
     environment:
-      - JITTERMON_LOG_LEVEL=INFO
+      - JITTERMON_LOG_LEVEL=DEBUG
       - JITTERMON_INTERVAL=1s
       - JITTERMON_LISTEN_ADDR=:8081
       - JITTERMON_SEND_ADDRS=jittermon:8080

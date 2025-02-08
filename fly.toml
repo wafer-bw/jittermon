@@ -15,7 +15,7 @@ kill_timeout = '1m0s'
   JITTERMON_PEER_ID = 'flyio-yyz'
   JITTERMON_INTERVAL = '1s'
   JITTERMON_LISTEN_ADDR = ':8080'
-  JITTERMON_LOG_LEVEL = 'DEBUG'
+  JITTERMON_LOG_LEVEL = 'INFO'
 
 [[services]]
   protocol = 'tcp'
