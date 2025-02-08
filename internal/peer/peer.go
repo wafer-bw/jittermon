@@ -57,9 +57,9 @@ type Peer struct {
 }
 
 // TODO: switch to functional options or options struct?
-func NewPeer(ID string, jitRecorder, rttRecorder, plRecorder Recorder, log *slog.Logger) (*Peer, error) {
+func NewPeer(id string, jitRecorder, rttRecorder, plRecorder Recorder, log *slog.Logger) (*Peer, error) {
 	return &Peer{
-		id:             PeerID(ID),
+		id:             PeerID(id),
 		log:            log,
 		jitter:         jitRecorder,
 		rtt:            rttRecorder,

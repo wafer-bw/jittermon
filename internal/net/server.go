@@ -12,6 +12,12 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+const (
+	maxConnectionAge      time.Duration = 10 * time.Second
+	maxConnectionIdle     time.Duration = 2 * time.Second
+	maxConnectionAgeGrace time.Duration = 2 * time.Second
+)
+
 type Server struct {
 	Addr    string
 	Handler pollpb.PollServiceServer
@@ -23,9 +29,9 @@ type Server struct {
 func (s *Server) Start(ctx context.Context) error {
 	server := grpc.NewServer(
 		grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionAge:      10 * time.Second,
-			MaxConnectionAgeGrace: 2 * time.Second,
-			MaxConnectionIdle:     2 * time.Second,
+			MaxConnectionAge:      maxConnectionAge,
+			MaxConnectionAgeGrace: maxConnectionAgeGrace,
+			MaxConnectionIdle:     maxConnectionIdle,
 		}),
 	)
 	s.server = server
@@ -40,6 +46,7 @@ func (s *Server) Start(ctx context.Context) error {
 	defer listener.Close()
 
 	s.Log.Info("listening", "addr", listener.Addr())
+
 	return s.server.Serve(listener)
 }
 

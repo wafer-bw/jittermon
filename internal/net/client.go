@@ -44,7 +44,7 @@ func (c *Client) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-t.C:
-			pollCtx, cancel := context.WithTimeout(ctx, c.Interval*5)
+			pollCtx, cancel := context.WithTimeout(ctx, c.Interval)
 			_ = c.Poller.DoPoll(pollCtx, client) // TODO: handle error.
 			cancel()
 		case <-c.stopCh:

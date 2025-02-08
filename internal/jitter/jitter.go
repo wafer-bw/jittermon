@@ -5,7 +5,10 @@ import (
 	"time"
 )
 
-const gain int64 = 16
+const (
+	minSamples int   = 2
+	gain       int64 = 16
+)
 
 type Packet struct {
 	S time.Time
@@ -16,7 +19,7 @@ type Packet struct {
 type PacketBuffer []Packet
 
 func (b *PacketBuffer) Jitter() (time.Duration, bool) {
-	if len(*b) < 2 {
+	if len(*b) < minSamples {
 		return 0, false
 	}
 
@@ -42,7 +45,7 @@ func (b *PacketBuffer) Jitter() (time.Duration, bool) {
 func (b *PacketBuffer) Push(e Packet) {
 	// shift current packet to previous packet; set new packet as current packet
 	*b = append(*b, e)
-	if len(*b) > 2 {
+	if len(*b) > minSamples {
 		*b = (*b)[1:]
 	}
 }

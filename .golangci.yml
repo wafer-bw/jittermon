@@ -1,0 +1,76 @@
+run:
+  go: "1.23"
+linters:
+  enable:
+    - govet
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - durationcheck
+    - errname
+    - errorlint
+    - forcetypeassert
+    - goconst
+    - testpackage
+    - mnd
+    - makezero
+    - nilerr
+    - nilnil
+    - nlreturn
+    - prealloc
+    - predeclared
+    - rowserrcheck
+    - sqlclosecheck
+    - tenv
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+    - nolintlint
+    - tparallel
+    - godot
+    - gocritic
+    - misspell
+    - nakedret
+    - nestif
+    - dogsled
+    - dupword
+    - gochecknoinits
+    - gosec
+    - tagliatelle
+    - nosprintfhostport
+    - funlen
+    - revive
+    - exhaustive
+
+linters-settings:
+  nestif:
+    min-complexity: 8
+  nlreturn:
+      block-size: 12
+  goconst:
+    ignore-tests: true
+  gosec:
+    exclude-generated: true
+  nolintlint:
+    allow-unused: false
+    require-explanation: true
+    require-specific: true
+  funlen:
+    lines: 100
+    statements: 50
+  revive:
+    rules:
+      - name: var-naming
+        disabled: false
+  gosimple:
+    checks:
+      - "-S1016"
+issues:
+  exclude-rules:
+    - path: _test.go # ignore following linters in *_test.go files
+      linters:
+        - funlen
+        - dupl
+        - unparam

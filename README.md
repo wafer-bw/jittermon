@@ -1,5 +1,7 @@
 # jittermon
 
+![Example Screenshot](./.media/examplescreen.png)
+
 ```sh
 # build docker image
 docker build -t jittermon .

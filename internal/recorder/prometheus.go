@@ -11,7 +11,12 @@ import (
 	"github.com/wafer-bw/jittermon/internal/peer"
 )
 
-const namespace string = "jittermon"
+const (
+	namespace    string        = "jittermon"
+	readTimeout  time.Duration = 1 * time.Second
+	writeTimeout time.Duration = 2 * time.Second
+	idleTimeout  time.Duration = 5 * time.Second
+)
 
 var _ peer.Recorder = (*Prometheus)(nil)
 
@@ -72,9 +77,9 @@ func (r *Prometheus) Start(ctx context.Context) error {
 	s := &http.Server{
 		Addr:         r.Addr,
 		Handler:      promhttp.Handler(),
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 2 * time.Second,
-		IdleTimeout:  5 * time.Second,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 	r.server = s
 

@@ -16,7 +16,7 @@ import (
 	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
-var conf config
+const shutdownTimeout time.Duration = 250 * time.Millisecond
 
 type config struct {
 	PeerID      string        `split_words:"true" default:""`
@@ -28,15 +28,12 @@ type config struct {
 	Write       bool          `split_words:"true" default:"false"`
 }
 
-func init() {
-	envconfig.MustProcess("JITTERMON", &conf)
-}
-
 // TODO: better convergance of configured recorders based on provided flags.
 func main() {
 	ctx := context.Background()
+	conf := &config{}
+	envconfig.MustProcess("JITTERMON", conf)
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: conf.LogLevel}))
-	shutdownTimeout := 250 * time.Millisecond
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 
 	var jitterCSV, rttCSV peer.Recorder
