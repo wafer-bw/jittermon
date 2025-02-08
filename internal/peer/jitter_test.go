@@ -17,15 +17,15 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 		pid := peer.PeerID("1")
 		now := time.Now()
 		b := peer.PeerRequestBuffers{}
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now,
 			ReceivedAt: now.Add(52 * time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(1 * time.Second),
 			ReceivedAt: now.Add(1*time.Second + 51*time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(2 * time.Second),
 			ReceivedAt: now.Add(2*time.Second + 54*time.Millisecond),
 		})
@@ -47,15 +47,15 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 		pid := peer.PeerID("1")
 		now := time.Now()
 		b := peer.PeerRequestBuffers{}
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now,
 			ReceivedAt: now.Add(52 * time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(1 * time.Second),
 			ReceivedAt: now.Add(1*time.Second + 53*time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(2 * time.Second),
 			ReceivedAt: now.Add(2*time.Second + 48*time.Millisecond),
 		})
@@ -77,15 +77,15 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 		pid := peer.PeerID("1")
 		now := time.Now()
 		b := peer.PeerRequestBuffers{}
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now,
 			ReceivedAt: now.Add(52 * time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(1 * time.Second),
 			ReceivedAt: now.Add(1*time.Second + 51*time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(2*time.Second + 2*time.Millisecond),
 			ReceivedAt: now.Add(2*time.Second + 54*time.Millisecond),
 		})
@@ -114,15 +114,15 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 		pid := peer.PeerID("1")
 		now := time.Now()
 		b := peer.PeerRequestBuffers{}
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now,
 			ReceivedAt: now.Add(50 * time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(1 * time.Second),
 			ReceivedAt: now.Add(1*time.Second + 50*time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(2*time.Second - 2*time.Millisecond),
 			ReceivedAt: now.Add(2*time.Second + 47*time.Millisecond),
 		})
@@ -150,15 +150,15 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 		pid := peer.PeerID("1")
 		now := time.Now()
 		b := peer.PeerRequestBuffers{}
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now,
 			ReceivedAt: now.Add(50 * time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(1 * time.Second),
 			ReceivedAt: now.Add(1*time.Second + 50*time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(2*time.Second - 2*time.Millisecond),
 			ReceivedAt: now.Add(2*time.Second + 54*time.Millisecond),
 		})
@@ -192,15 +192,15 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 		pid := peer.PeerID("1")
 		now := time.Now()
 		b := peer.PeerRequestBuffers{}
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now,
 			ReceivedAt: now.Add(50 * time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(1 * time.Second),
 			ReceivedAt: now.Add(1*time.Second + 50*time.Millisecond),
 		})
-		b.Add(pid, peer.PeerRequest{
+		b.Sample(pid, peer.PeerRequest{
 			SentAt:     now.Add(2*time.Second + 2*time.Millisecond),
 			ReceivedAt: now.Add(2*time.Second + 46*time.Millisecond),
 		})

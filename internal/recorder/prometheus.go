@@ -13,6 +13,8 @@ import (
 
 const namespace string = "jittermon"
 
+var _ peer.Recorder = (*Prometheus)(nil)
+
 type Prometheus struct {
 	Addr string
 

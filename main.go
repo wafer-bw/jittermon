@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/go-toolbox/graceful"
+	"github.com/wafer-bw/jittermon/internal/net"
 	"github.com/wafer-bw/jittermon/internal/peer"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 )
@@ -63,7 +64,7 @@ func main() {
 
 	if len(conf.SendAddrs) != 0 {
 		for _, addr := range conf.SendAddrs {
-			group = append(group, &peer.Client{
+			group = append(group, &net.Client{
 				Addr:     addr,
 				Poller:   p,
 				Interval: conf.Interval,
@@ -73,7 +74,7 @@ func main() {
 	}
 
 	if conf.ListenAddr != "" {
-		group = append(group, &peer.Server{
+		group = append(group, &net.Server{
 			Addr:    conf.ListenAddr,
 			Handler: p,
 			Log:     log,

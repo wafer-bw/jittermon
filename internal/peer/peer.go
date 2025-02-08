@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/wafer-bw/jittermon/internal/net"
 	"github.com/wafer-bw/jittermon/internal/pb/pollpb"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -18,7 +19,7 @@ const (
 )
 
 var _ pollpb.PollServiceServer = (*Peer)(nil)
-var _ DoPoller = (*Peer)(nil)
+var _ net.DoPoller = (*Peer)(nil)
 
 // Recorder is capable of persisting a keyed duration value for an interaction
 // between two peers in some storage media or mechanism.
@@ -80,7 +81,7 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 	}
 	peerID := PeerID(peerIDPb)
 
-	p.requestBuffers.Add(peerID, PeerRequest{SentAt: sentAt, ReceivedAt: now})
+	p.requestBuffers.Sample(peerID, PeerRequest{SentAt: sentAt, ReceivedAt: now})
 
 	resp := &pollpb.PollResponse{}
 	resp.SetId(p.id.String())
