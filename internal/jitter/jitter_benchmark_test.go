@@ -1,5 +1,12 @@
 package jitter_test
 
+// goos: darwin
+// goarch: arm64
+// pkg: github.com/wafer-bw/jittermon/internal/jitter
+// cpu: Apple M2 Max
+// BenchmarkPeerRequestBuffers_Jitter-12    	100000000	        10.96 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkPeerRequestBuffers_Sample-12    	 3497463	       367.1 ns/op	     317 B/op	       3 allocs/op
+
 import (
 	"fmt"
 	"testing"
