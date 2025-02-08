@@ -37,3 +37,5 @@ docker compose -f demo/docker-compose-fly.yml down
   like that?
 - Cobra CLI
 - grafana rate inteval vs range
+- detect packet loss
+

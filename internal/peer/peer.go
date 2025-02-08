@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/net"
 	"github.com/wafer-bw/jittermon/internal/pb/pollpb"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -47,7 +48,7 @@ type Peer struct {
 	log            *slog.Logger
 	jitter         Recorder
 	rtt            Recorder
-	requestBuffers PeerRequestBuffers
+	requestBuffers jitter.HostPacketBuffers
 
 	pollpb.UnimplementedPollServiceServer
 }
@@ -59,7 +60,7 @@ func NewPeer(ID string, jitRecorder, rttRecorder Recorder, log *slog.Logger) (*P
 		log:            log,
 		jitter:         jitRecorder,
 		rtt:            rttRecorder,
-		requestBuffers: PeerRequestBuffers{},
+		requestBuffers: jitter.HostPacketBuffers{},
 	}, nil
 }
 
@@ -81,12 +82,12 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 	}
 	peerID := PeerID(peerIDPb)
 
-	p.requestBuffers.Sample(peerID, PeerRequest{S: sentAt, R: now})
+	p.requestBuffers.Sample(string(peerID), jitter.Packet{S: sentAt, R: now})
 
 	resp := &pollpb.PollResponse{}
 	resp.SetId(p.id.String())
 
-	jitter, ok := p.requestBuffers.Jitter(peerID)
+	jitter, ok := p.requestBuffers.Jitter(string(peerID))
 	if !ok {
 		return resp, nil
 	}
