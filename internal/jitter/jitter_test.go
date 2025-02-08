@@ -11,135 +11,118 @@ import (
 func TestPeerRequestBuffers_Jitter(t *testing.T) {
 	t.Parallel()
 
-	// TODO: update tests now that we are calculating jitter according to
-	// https://datatracker.ietf.org/doc/html/rfc3550#section-6.4.1
-
-	// t.Run("measures delayed jitter", func(t *testing.T) {
-	// 	t.Parallel()
-
-	// 	pid := peer.PeerID("1")
-	// 	now := time.Now()
-	// 	b := peer.PeerRequestBuffers{}
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now,
-	// 		R: now.Add(52 * time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(1 * time.Second),
-	// 		R: now.Add(1*time.Second + 51*time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(2 * time.Second),
-	// 		R: now.Add(2*time.Second + 54*time.Millisecond),
-	// 	})
-
-	// 	jitter, ok := b.Jitter(pid)
-	// 	require.True(t, ok)
-	// 	require.Equal(t, 4*time.Millisecond, jitter)
-	// })
-
-	// t.Run("measures hastened jitter", func(t *testing.T) {
-	// 	t.Parallel()
-
-	// 	pid := peer.PeerID("1")
-	// 	now := time.Now()
-	// 	b := peer.PeerRequestBuffers{}
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now,
-	// 		R: now.Add(52 * time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(1 * time.Second),
-	// 		R: now.Add(1*time.Second + 53*time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(2 * time.Second),
-	// 		R: now.Add(2*time.Second + 48*time.Millisecond),
-	// 	})
-
-	// 	jitter, ok := b.Jitter(pid)
-	// 	require.True(t, ok)
-	// 	require.Equal(t, 6*time.Millisecond, jitter)
-	// })
-
-	// t.Run("negates delayed send jitter from delayed receive jitter", func(t *testing.T) {
-	// 	t.Parallel()
-
-	// 	pid := peer.PeerID("1")
-	// 	now := time.Now()
-	// 	b := peer.PeerRequestBuffers{}
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now,
-	// 		R: now.Add(52 * time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(1 * time.Second),
-	// 		R: now.Add(1*time.Second + 51*time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(2*time.Second + 2*time.Millisecond),
-	// 		R: now.Add(2*time.Second + 54*time.Millisecond),
-	// 	})
-
-	// 	jitter, ok := b.Jitter(pid)
-	// 	require.True(t, ok)
-	// 	require.Equal(t, 2*time.Millisecond, jitter)
-	// })
-
-	// t.Run("negates hastened send jitter from hastened receive jitter", func(t *testing.T) {
-	// 	t.Parallel()
-
-	// 	pid := peer.PeerID("1")
-	// 	now := time.Now()
-	// 	b := peer.PeerRequestBuffers{}
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now,
-	// 		R: now.Add(50 * time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(1 * time.Second),
-	// 		R: now.Add(1*time.Second + 50*time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(2*time.Second - 2*time.Millisecond),
-	// 		R: now.Add(2*time.Second + 47*time.Millisecond),
-	// 	})
-
-	// 	jitter, ok := b.Jitter(pid)
-	// 	require.True(t, ok)
-	// 	require.Equal(t, 1*time.Millisecond, jitter)
-	// })
-
-	// t.Run("negates hastened send jitter from delayed receive jitter", func(t *testing.T) {
-	// 	t.Parallel()
-
-	// 	pid := peer.PeerID("1")
-	// 	now := time.Now()
-	// 	b := peer.PeerRequestBuffers{}
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now,
-	// 		R: now.Add(50 * time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(1 * time.Second),
-	// 		R: now.Add(1*time.Second + 50*time.Millisecond),
-	// 	})
-	// 	b.Sample(pid, peer.PeerRequest{
-	// 		S: now.Add(2*time.Second - 2*time.Millisecond),
-	// 		R: now.Add(2*time.Second + 54*time.Millisecond),
-	// 	})
-
-	// 	jitter, ok := b.Jitter(pid)
-	// 	require.True(t, ok)
-	// 	require.Equal(t, 6*time.Millisecond, jitter)
-	// })
-
-	t.Run("negates delayed send jitter from hastened receive jitter", func(t *testing.T) {
+	t.Run("measures delayed jitter", func(t *testing.T) {
 		t.Parallel()
 
 		pid := "1"
 		now := time.Now()
 		b := jitter.HostPacketBuffers{}
+
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(1 * time.Second),
+			R: now.Add(1*time.Second + 50*time.Millisecond),
+		})
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(2 * time.Second),
+			R: now.Add(2*time.Second + 60*time.Millisecond),
+		})
+
+		jitter, ok := b.Jitter(pid)
+		require.True(t, ok)
+		require.Equal(t, 625*time.Microsecond, jitter)
+	})
+
+	t.Run("measures hastened jitter", func(t *testing.T) {
+		t.Parallel()
+
+		pid := "1"
+		now := time.Now()
+		b := jitter.HostPacketBuffers{}
+
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(1 * time.Second),
+			R: now.Add(1*time.Second + 60*time.Millisecond),
+		})
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(2 * time.Second),
+			R: now.Add(2*time.Second + 50*time.Millisecond),
+		})
+
+		jitter, ok := b.Jitter(pid)
+		require.True(t, ok)
+		require.Equal(t, 625*time.Microsecond, jitter)
+	})
+
+	t.Run("negates delayed send jitter from delayed receive jitter", func(t *testing.T) {
+		t.Parallel()
+
+		pid := "1"
+		now := time.Now()
+		b := jitter.HostPacketBuffers{}
+
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(1 * time.Second),
+			R: now.Add(1*time.Second + 50*time.Millisecond),
+		})
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(2*time.Second + 5*time.Millisecond),
+			R: now.Add(2*time.Second + 60*time.Millisecond),
+		})
+
+		jitter, ok := b.Jitter(pid)
+		require.True(t, ok)
+		require.Equal(t, 312500*time.Nanosecond, jitter)
+	})
+
+	t.Run("negates hastened send jitter from hastened receive jitter", func(t *testing.T) {
+		t.Parallel()
+
+		pid := "1"
+		now := time.Now()
+		b := jitter.HostPacketBuffers{}
+
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(1 * time.Second),
+			R: now.Add(1*time.Second + 50*time.Millisecond),
+		})
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(2*time.Second - 5*time.Millisecond),
+			R: now.Add(2*time.Second + 40*time.Millisecond),
+		})
+
+		jitter, ok := b.Jitter(pid)
+		require.True(t, ok)
+		require.Equal(t, 312500*time.Nanosecond, jitter)
+	})
+
+	t.Run("combines hastened send jitter from delayed receive jitter", func(t *testing.T) {
+		t.Parallel()
+
+		pid := "1"
+		now := time.Now()
+		b := jitter.HostPacketBuffers{}
+
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(1 * time.Second),
+			R: now.Add(1*time.Second + 50*time.Millisecond),
+		})
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(2*time.Second - 5*time.Millisecond),
+			R: now.Add(2*time.Second + 60*time.Millisecond),
+		})
+
+		jitter, ok := b.Jitter(pid)
+		require.True(t, ok)
+		require.Equal(t, 937500*time.Nanosecond, jitter)
+	})
+
+	t.Run("combines delayed send jitter from hastened receive jitter", func(t *testing.T) {
+		t.Parallel()
+
+		pid := "1"
+		now := time.Now()
+		b := jitter.HostPacketBuffers{}
+
 		b.Sample(pid, jitter.Packet{
 			S: now,
 			R: now.Add(50 * time.Millisecond),
@@ -149,12 +132,39 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 			R: now.Add(1*time.Second + 50*time.Millisecond),
 		})
 		b.Sample(pid, jitter.Packet{
-			S: now.Add(2*time.Second + 2*time.Millisecond),
-			R: now.Add(2*time.Second + 46*time.Millisecond),
+			S: now.Add(2*time.Second + 5*time.Millisecond),
+			R: now.Add(2*time.Second + 40*time.Millisecond),
 		})
 
 		jitter, ok := b.Jitter(pid)
 		require.True(t, ok)
-		require.Equal(t, 375*time.Microsecond, jitter)
+		require.Equal(t, 937500*time.Nanosecond, jitter)
+	})
+
+	t.Run("does not report jitter until two packets have been sampled", func(t *testing.T) {
+		t.Parallel()
+
+		pid := "1"
+		now := time.Now()
+		b := jitter.HostPacketBuffers{}
+
+		_, ok := b.Jitter(pid)
+		require.False(t, ok)
+
+		b.Sample(pid, jitter.Packet{
+			S: now,
+			R: now.Add(50 * time.Millisecond),
+		})
+
+		_, ok = b.Jitter(pid)
+		require.False(t, ok)
+
+		b.Sample(pid, jitter.Packet{
+			S: now.Add(1 * time.Second),
+			R: now.Add(1*time.Second + 50*time.Millisecond),
+		})
+
+		_, ok = b.Jitter(pid)
+		require.True(t, ok)
 	})
 }
