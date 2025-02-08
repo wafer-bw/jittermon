@@ -23,7 +23,7 @@ type Prometheus struct {
 	histograms map[string]*prometheus.HistogramVec
 }
 
-func (r *Prometheus) Record(src, dst peer.PeerID, key string, tsm time.Time, dur time.Duration) error {
+func (r *Prometheus) Record(src, dst peer.PeerID, key string, tsm time.Time, dur *time.Duration) error {
 	k := fmt.Sprintf("%s-%s-%s", src, dst, key)
 
 	if r.histograms == nil {
@@ -60,7 +60,9 @@ func (r *Prometheus) Record(src, dst peer.PeerID, key string, tsm time.Time, dur
 		r.counters[k] = count
 	}
 
-	hist.WithLabelValues(string(src), string(dst)).Observe(dur.Seconds())
+	if dur != nil {
+		hist.WithLabelValues(string(src), string(dst)).Observe(dur.Seconds())
+	}
 	count.WithLabelValues(string(src), string(dst)).Inc()
 
 	return nil

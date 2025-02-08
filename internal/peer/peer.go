@@ -34,7 +34,7 @@ var _ net.DoPoller = (*Peer)(nil)
 // TODO: expand out var names probably.
 // TODO: maybe make src/dst be local/remote instead?
 type Recorder interface {
-	Record(src, dst PeerID, key string, tsm time.Time, dur time.Duration) error
+	Record(src, dst PeerID, key string, tsm time.Time, dur *time.Duration) error
 }
 
 type PeerID string
@@ -43,23 +43,27 @@ func (p PeerID) String() string {
 	return string(p)
 }
 
+// TODO: a better way of specifying which recorders to use and which metrics
+// to record to each recorder.
 type Peer struct {
 	id             PeerID
 	log            *slog.Logger
 	jitter         Recorder
 	rtt            Recorder
+	pl             Recorder
 	requestBuffers jitter.HostPacketBuffers
 
 	pollpb.UnimplementedPollServiceServer
 }
 
 // TODO: switch to functional options or options struct?
-func NewPeer(ID string, jitRecorder, rttRecorder Recorder, log *slog.Logger) (*Peer, error) {
+func NewPeer(ID string, jitRecorder, rttRecorder, plRecorder Recorder, log *slog.Logger) (*Peer, error) {
 	return &Peer{
 		id:             PeerID(ID),
 		log:            log,
 		jitter:         jitRecorder,
 		rtt:            rttRecorder,
+		pl:             plRecorder,
 		requestBuffers: jitter.HostPacketBuffers{},
 	}, nil
 }
@@ -82,26 +86,25 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 	}
 	peerID := PeerID(peerIDPb)
 
-	p.requestBuffers.Sample(string(peerID), jitter.Packet{S: sentAt, R: now})
-
 	resp := &pollpb.PollResponse{}
 	resp.SetId(p.id.String())
 
+	p.requestBuffers.Sample(string(peerID), jitter.Packet{S: sentAt, R: now})
 	jitter, ok := p.requestBuffers.Jitter(string(peerID))
 	if !ok {
 		return resp, nil
 	}
 
-	p.log.Debug("", "src", peerID, "dst", p.id, downstreamJitterKey, jitter)
-
 	resp.SetJitter(durationpb.New(jitter))
 
 	if p.jitter != nil {
 		// record downstream jitter relative to this peer.
-		if err := p.jitter.Record(peerID, p.id, downstreamJitterKey, now, jitter); err != nil {
+		if err := p.jitter.Record(peerID, p.id, downstreamJitterKey, now, &jitter); err != nil {
 			p.log.Error("failed to record downstream jitter", "err", err)
 		}
 	}
+
+	p.log.Debug("", "src", peerID, "dst", p.id, downstreamJitterKey, jitter)
 
 	return resp, nil
 }
@@ -113,14 +116,27 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 
 	now := time.Now()
 
+	if p.pl != nil {
+		// TODO: use target addr as dst.
+		if err := p.pl.Record(p.id, "", "packetsent", now, nil); err != nil {
+			p.log.Error("failed to record packet loss", "err", err)
+		}
+	}
+
 	req := &pollpb.PollRequest{}
 	req.SetId(p.id.String())
 	req.SetTimestamp(timestamppb.New(now))
-
 	resp, err := client.Poll(ctx, req)
 	if err != nil {
 		p.log.Warn("poll failed", "err", err)
 		return err
+	}
+
+	if p.pl != nil {
+		// TODO: use target addr as dst.
+		if err := p.pl.Record(p.id, "", "packetrecv", now, nil); err != nil {
+			p.log.Error("failed to record packet loss", "err", err)
+		}
 	}
 
 	rtt := time.Since(now)
@@ -138,15 +154,13 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 	peerID := PeerID(peerIDPb)
 
 	if p.jitter != nil {
-		// record upstream jitter relative to this peer.
-		if err := p.jitter.Record(p.id, peerID, upstreamJitterKey, now, jitter); err != nil {
+		if err := p.jitter.Record(p.id, peerID, upstreamJitterKey, now, &jitter); err != nil {
 			p.log.Error("failed to record upstream jitter", "err", err)
 		}
 	}
 
 	if p.rtt != nil {
-		// record round-trip time between this peer and the remote peer.
-		if err := p.rtt.Record(p.id, peerID, rttKey, now, rtt); err != nil {
+		if err := p.rtt.Record(p.id, peerID, rttKey, now, &rtt); err != nil {
 			p.log.Error("failed to record rtt", "err", err)
 		}
 	}

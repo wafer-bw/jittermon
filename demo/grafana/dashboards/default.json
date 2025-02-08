@@ -106,7 +106,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "upstream-jitter"
+              "options": "upstream jitter"
             },
             "properties": [
               {
@@ -121,7 +121,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "downstream-jitter"
+              "options": "downstream jitter"
             },
             "properties": [
               {
@@ -130,6 +130,41 @@
                   "fixedColor": "light-green",
                   "mode": "fixed"
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "packet loss"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 40
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
               }
             ]
           }
@@ -172,7 +207,7 @@
           "expr": "sum(rate(jittermon_downstreamJitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_downstreamJitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0\n\n",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "downstream-jitter",
+          "legendFormat": "downstream jitter",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -186,7 +221,7 @@
           "expr": "sum(rate(jittermon_upstreamJitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_upstreamJitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0\n",
           "hide": false,
           "instant": false,
-          "legendFormat": "upstream-jitter",
+          "legendFormat": "upstream jitter",
           "range": true,
           "refId": "B"
         },
@@ -202,6 +237,19 @@
           "legendFormat": "rtt",
           "range": true,
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval])) - sum by (src) (increase(jittermon_packetrecv_requests_total[$__rate_interval]))) / sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "packet loss",
+          "range": true,
+          "refId": "D"
         }
       ],
       "title": "Jitter",
