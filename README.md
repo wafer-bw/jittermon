@@ -1,4 +1,5 @@
 # jittermon
+[![codecov](https://codecov.io/gh/wafer-bw/jittermon/graph/badge.svg?token=EZfdMqKD7p)](https://codecov.io/gh/wafer-bw/jittermon)
 
 ![Example Screenshot](./.media/examplescreen.png)
 
