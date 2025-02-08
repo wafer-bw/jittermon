@@ -111,11 +111,12 @@ jobs:
           go-version: ${{ matrix.go }}
           check-latest: true
       - name: Run tests
-        run: go test -shuffle=on -v -count=1 -race -failfast -timeout=30s -covermode=atomic -coverprofile=coverage.out ./...
-      - name: Convert coverage to lcov
-        uses: jandelgado/gcov2lcov-action@v1.0.9
-      - name: Coverage
-        uses: codecov/codecov-action@v3
+        run: go test -shuffle=on -v -count=1 -race -failfast -timeout=30s -covermode=atomic -coverprofile=coverage.txt ./...
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: wafer-bw/jittermon
 
   benchmark:
     name: benchmark
