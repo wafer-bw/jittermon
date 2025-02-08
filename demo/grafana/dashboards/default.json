@@ -91,7 +91,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "rtt"
+              "options": "round trip time (ping)"
             },
             "properties": [
               {
@@ -234,7 +234,7 @@
           "expr": "sum(rate(jittermon_rtt_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_rtt_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
           "hide": false,
           "instant": false,
-          "legendFormat": "rtt",
+          "legendFormat": "round trip time (ping)",
           "range": true,
           "refId": "C"
         },
@@ -252,7 +252,7 @@
           "refId": "D"
         }
       ],
-      "title": "Jitter",
+      "title": "Jittermon Demo",
       "type": "timeseries"
     }
   ],
