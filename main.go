@@ -59,6 +59,7 @@ func main() {
 	if conf.PeerID == "" {
 		conf.PeerID = strings.Split(uuid.New().String(), "-")[1]
 	}
+
 	p, err := peer.NewPeer(conf.PeerID, prometheus, prometheus, log)
 	if err != nil {
 		log.Error(err.Error())
