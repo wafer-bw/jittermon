@@ -7,6 +7,7 @@ package tools
 // added here so that they are still tracked inside go.mod
 
 import (
+	_ "github.com/daixiang0/gci"
 	_ "github.com/golang/mock/mockgen"
 	_ "github.com/joho/godotenv/cmd/godotenv"
 	_ "golang.org/x/tools/cmd/goimports"
