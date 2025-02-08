@@ -7,32 +7,30 @@ type PeerRequest struct {
 	ReceivedAt time.Time
 }
 
-type RequestBuffer struct {
-	Sent          time.Time
-	Received      time.Time
-	ReceiveJitter time.Duration
-	SendJitter    time.Duration
-
-	// used to avoid reporting jitter until we have sampled twice (not a count
-	// of total samples).
-	s int
-}
+type RequestBuffer []PeerRequest
 
 func (b RequestBuffer) Jitter() (time.Duration, bool) {
-	if b.s != 2 {
+	if len(b) <= 2 {
 		return 0, false
 	}
 
-	return (b.ReceiveJitter - b.SendJitter).Abs(), true
+	e1, e2, e3 := b[0], b[1], b[2]
+
+	sendInterval1 := e2.SentAt.Sub(e1.SentAt)
+	sendInterval2 := e3.SentAt.Sub(e2.SentAt)
+	sendJitter := sendInterval2 - sendInterval1
+
+	receiveInterval1 := e2.ReceivedAt.Sub(e1.ReceivedAt)
+	receiveInterval2 := e3.ReceivedAt.Sub(e2.ReceivedAt)
+	receiveJitter := receiveInterval2 - receiveInterval1
+
+	return (receiveJitter - sendJitter).Abs(), true
 }
 
-func (b *RequestBuffer) Sample(e PeerRequest) {
-	b.ReceiveJitter = e.ReceivedAt.Sub(b.Received) - b.ReceiveJitter
-	b.SendJitter = e.SentAt.Sub(b.Sent) - b.SendJitter
-	b.Received = e.ReceivedAt
-	b.Sent = e.SentAt
-	if b.s < 2 {
-		b.s++
+func (b *RequestBuffer) Push(e PeerRequest) {
+	*b = append(*b, e)
+	if len(*b) > 3 {
+		*b = (*b)[1:]
 	}
 }
 
@@ -49,6 +47,6 @@ func (b PeerRequestBuffers) Jitter(peerID PeerID) (time.Duration, bool) {
 
 func (b PeerRequestBuffers) Sample(peerID PeerID, e PeerRequest) {
 	buffer := b[peerID]
-	buffer.Sample(e)
+	buffer.Push(e)
 	b[peerID] = buffer
 }
