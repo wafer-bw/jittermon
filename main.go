@@ -19,6 +19,7 @@ import (
 var conf config
 
 type config struct {
+	PeerID      string        `split_words:"true" default:""`
 	ListenAddr  string        `split_words:"true" default:":8080"`
 	SendAddrs   []string      `split_words:"true" default:":8081"`
 	MetricsAddr string        `split_words:"true" default:""`
@@ -55,8 +56,10 @@ func main() {
 		group = append(group, r)
 	}
 
-	pid := strings.Split(uuid.New().String(), "-")[1]
-	p, err := peer.NewPeer(pid, prometheus, prometheus, log)
+	if conf.PeerID == "" {
+		conf.PeerID = strings.Split(uuid.New().String(), "-")[1]
+	}
+	p, err := peer.NewPeer(conf.PeerID, prometheus, prometheus, log)
 	if err != nil {
 		log.Error(err.Error())
 		os.Exit(1)

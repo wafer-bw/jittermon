@@ -150,7 +150,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 		}
 	}
 
-	p.log.Info("", "src", p.id, "dst", peerID, rttKey, rtt) // TODO: review this result.
+	p.log.Debug("", "src", p.id, "dst", peerID, rttKey, rtt)
 	p.log.Debug("", "src", p.id, "dst", peerID, upstreamJitterKey, jitter)
 
 	return nil
