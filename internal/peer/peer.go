@@ -81,7 +81,7 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 	}
 	peerID := PeerID(peerIDPb)
 
-	p.requestBuffers.Sample(peerID, PeerRequest{SentAt: sentAt, ReceivedAt: now})
+	p.requestBuffers.Sample(peerID, PeerRequest{S: sentAt, R: now})
 
 	resp := &pollpb.PollResponse{}
 	resp.SetId(p.id.String())

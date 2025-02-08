@@ -23,15 +23,10 @@ type Server struct {
 func (s *Server) Start(ctx context.Context) error {
 	server := grpc.NewServer(
 		grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionAge:      5 * time.Second,
-			MaxConnectionAgeGrace: 1 * time.Second,
-			MaxConnectionIdle:     5 * time.Second,
+			MaxConnectionAge:      10 * time.Second,
+			MaxConnectionAgeGrace: 2 * time.Second,
+			MaxConnectionIdle:     2 * time.Second,
 		}),
-		grpc.MaxConcurrentStreams(5),
-		grpc.MaxRecvMsgSize(2048),
-		grpc.MaxSendMsgSize(2048),
-		grpc.ConnectionTimeout(30*time.Second),
-		grpc.MaxHeaderListSize(2048),
 	)
 	s.server = server
 
