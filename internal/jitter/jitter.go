@@ -13,13 +13,14 @@ type Packet struct {
 	J time.Duration
 }
 
-type PacketBuffer struct {
-	I Packet // current packet
-	J Packet // previous packet
-}
+type PacketBuffer []Packet
 
 func (b *PacketBuffer) Jitter() (time.Duration, bool) {
-	i, j := b.I, b.J
+	if len(*b) < 2 {
+		return 0, false
+	}
+
+	i, j := (*b)[1], (*b)[0]
 	Ri, Rj := i.R, j.R
 	Si, Sj := i.S, j.S
 	Jj := j.J
@@ -33,14 +34,17 @@ func (b *PacketBuffer) Jitter() (time.Duration, bool) {
 	// J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16
 	// J(i) = Jj + (|Dij| - Jj)/16
 	Ji := Jj + (Dij.Abs()-Jj)/time.Duration(gain)
-	b.I.J = Ji
+	(*b)[1].J = Ji
 
 	return Ji, true
 }
 
 func (b *PacketBuffer) Push(e Packet) {
 	// shift current packet to previous packet; set new packet as current packet
-	b.J, b.I = b.I, e
+	*b = append(*b, e)
+	if len(*b) > 2 {
+		*b = (*b)[1:]
+	}
 }
 
 type HostPacketBuffers map[string]PacketBuffer
