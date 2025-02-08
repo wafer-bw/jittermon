@@ -48,7 +48,10 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "stepBefore",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 1,
             "pointSize": 3,
             "scaleDistribution": {
@@ -61,7 +64,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "dashed+area"
+              "mode": "area"
             }
           },
           "mappings": [],
@@ -84,10 +87,56 @@
           },
           "unit": "s"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rtt"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "upstream-jitter"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "downstream-jitter"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 10,
+        "h": 20,
         "w": 24,
         "x": 0,
         "y": 0
@@ -103,13 +152,12 @@
           "placement": "right",
           "showLegend": true,
           "sortBy": "Mean",
-          "sortDesc": true,
-          "width": 250
+          "sortDesc": true
         },
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.5.1",
@@ -124,7 +172,7 @@
           "expr": "sum(rate(jittermon_downstreamJitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_downstreamJitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0\n\n",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "downstream",
+          "legendFormat": "downstream-jitter",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -138,118 +186,25 @@
           "expr": "sum(rate(jittermon_upstreamJitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_upstreamJitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0\n",
           "hide": false,
           "instant": false,
-          "legendFormat": "upstream",
+          "legendFormat": "upstream-jitter",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(jittermon_rtt_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_rtt_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "rtt",
+          "range": true,
+          "refId": "C"
         }
       ],
       "title": "Jitter",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "name": "Prometheus",
-        "type": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 4,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 10
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "width": 250
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "11.5.1",
-      "targets": [
-        {
-          "datasource": {
-            "name": "Prometheus",
-            "type": "prometheus"
-          },
-          "disableTextWrap": false,
-          "editorMode": "code",
-          "expr": "sum(rate(jittermon_rtt_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_rtt_duration_seconds_count{}[$__rate_interval])) by (src) > 0\n\n",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "RTT",
       "type": "timeseries"
     }
   ],
