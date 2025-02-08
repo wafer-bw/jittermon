@@ -27,11 +27,11 @@ func (s *Server) Start(ctx context.Context) error {
 			MaxConnectionAgeGrace: 1 * time.Second,
 			MaxConnectionIdle:     5 * time.Second,
 		}),
-		grpc.MaxConcurrentStreams(1),
-		grpc.MaxRecvMsgSize(512),
-		grpc.MaxSendMsgSize(512),
+		grpc.MaxConcurrentStreams(5),
+		grpc.MaxRecvMsgSize(1024),
+		grpc.MaxSendMsgSize(1024),
 		grpc.ConnectionTimeout(30*time.Second),
-		grpc.MaxHeaderListSize(512),
+		grpc.MaxHeaderListSize(1024),
 	)
 	s.server = server
 
