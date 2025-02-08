@@ -13,7 +13,7 @@ kill_timeout = '1m0s'
 
 [env]
   JITTERMON_PEER_ID = 'flyio-yyz'
-  JITTERMON_INTERVAL = '1s'
+  JITTERMON_INTERVAL = '0.25s'
   JITTERMON_LISTEN_ADDR = ':8080'
   JITTERMON_LOG_LEVEL = 'INFO'
 
