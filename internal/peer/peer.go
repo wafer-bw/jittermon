@@ -111,6 +111,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 	// a failing peer in error messages.
 
 	now := time.Now()
+	rtt := time.Since(now)
 
 	req := &pollpb.PollRequest{}
 	req.SetId(p.id.String())
@@ -121,8 +122,6 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient) erro
 		p.log.Warn("poll failed", "err", err)
 		return err
 	}
-
-	rtt := time.Since(now)
 
 	jitterPb := resp.GetJitter()
 	if jitterPb == nil {
