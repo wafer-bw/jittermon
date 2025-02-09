@@ -100,7 +100,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "light-blue",
+                  "fixedColor": "blue",
                   "mode": "fixed"
                 }
               }
@@ -115,7 +115,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "light-yellow",
+                  "fixedColor": "yellow",
                   "mode": "fixed"
                 }
               }
@@ -130,7 +130,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "light-green",
+                  "fixedColor": "green",
                   "mode": "fixed"
                 }
               }
@@ -291,6 +291,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 10,
+  "version": 1,
   "weekStart": ""
 }
