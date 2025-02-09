@@ -40,8 +40,6 @@ func (r *Prometheus) Record(src, dst string, key string, tsm time.Time, dur *tim
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	k := fmt.Sprintf("%s-%s-%s", src, dst, key)
-
 	if r.histograms == nil {
 		r.histograms = map[string]*prometheus.HistogramVec{}
 	}
