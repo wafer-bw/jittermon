@@ -32,7 +32,7 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
+            "axisBorderShow": true,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -57,7 +57,7 @@
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "auto",
+            "showPoints": "never",
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -67,7 +67,10 @@
               "mode": "area"
             }
           },
+          "decimals": 2,
+          "fieldMinMax": false,
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -142,7 +145,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#F2495C",
+                  "fixedColor": "dark-red",
                   "mode": "fixed"
                 }
               },
@@ -165,6 +168,10 @@
               {
                 "id": "custom.drawStyle",
                 "value": "line"
+              },
+              {
+                "id": "min",
+                "value": 0.01
               }
             ]
           }
@@ -244,7 +251,8 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "(sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval])) - sum by (src) (increase(jittermon_packetrecv_requests_total[$__rate_interval]))) / sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval])) > 0",
+          "exemplar": false,
+          "expr": "(sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval])) - sum by (src) (increase(jittermon_packetrecv_requests_total[$__rate_interval]))) / sum by (src) (increase(jittermon_packetsent_requests_total[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "packet loss",
@@ -252,7 +260,7 @@
           "refId": "D"
         }
       ],
-      "title": "Jittermon Demo",
+      "title": "Remote gRPC Peer",
       "type": "timeseries"
     }
   ],
@@ -283,6 +291,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 1,
+  "version": 10,
   "weekStart": ""
 }
