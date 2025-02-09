@@ -36,7 +36,7 @@ func NewPrometheus(addr string) *Prometheus {
 	}
 }
 
-func (r *Prometheus) Record(src, dst string, key string, tsm time.Time, dur *time.Duration) error {
+func (r *Prometheus) Record(tsm time.Time, key, src, dst string, dur *time.Duration) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

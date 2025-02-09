@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	downstreamJitterKey string = "downstreamJitter"
-	upstreamJitterKey   string = "upstreamJitter"
+	downstreamJitterKey string = "downstream_jitter"
+	upstreamJitterKey   string = "upstream_jitter"
+	sentPacketsKey      string = "sent_packets"
+	lostPacketsKey      string = "lost_packets"
 	rttKey              string = "rtt"
 )
 
@@ -34,7 +36,7 @@ var _ comms.DoPoller = (*Peer)(nil)
 // TODO: expand out var names probably.
 // TODO: maybe make src/dst be local/remote instead?
 type Recorder interface {
-	Record(src, dst string, key string, tsm time.Time, dur *time.Duration) error
+	Record(tsm time.Time, key, src, dst string, dur *time.Duration) error
 }
 
 // TODO: a better way of specifying which recorders to use and which metrics
@@ -88,7 +90,7 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 	resp.SetJitter(durationpb.New(jitter))
 
 	if p.jitter != nil {
-		if err := p.jitter.Record(srcID, p.id, downstreamJitterKey, now, &jitter); err != nil {
+		if err := p.jitter.Record(now, downstreamJitterKey, srcID, p.id, &jitter); err != nil {
 			p.log.Error("failed to record downstream jitter", "err", err)
 		}
 	}
@@ -106,7 +108,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 	req.SetTimestamp(timestamppb.New(now))
 
 	if p.pl != nil {
-		if err := p.pl.Record(p.id, dstAddr, "packetsent", now, nil); err != nil {
+		if err := p.pl.Record(now, sentPacketsKey, p.id, dstAddr, nil); err != nil {
 			p.log.Error("failed to record sent packet", "err", err)
 		}
 	}
@@ -114,7 +116,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 	resp, err := client.Poll(ctx, req)
 	if err != nil {
 		if p.pl != nil {
-			if err := p.pl.Record(p.id, dstAddr, "packetlost", now, nil); err != nil {
+			if err := p.pl.Record(now, lostPacketsKey, p.id, dstAddr, nil); err != nil {
 				p.log.Error("failed to record lost packet", "err", err)
 			}
 		}
@@ -138,13 +140,13 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 	jitter := jitterPb.AsDuration()
 
 	if p.jitter != nil {
-		if err := p.jitter.Record(p.id, dstID, upstreamJitterKey, now, &jitter); err != nil {
+		if err := p.jitter.Record(now, upstreamJitterKey, p.id, dstID, &jitter); err != nil {
 			p.log.Error("failed to record upstream jitter", "err", err)
 		}
 	}
 
 	if p.rtt != nil {
-		if err := p.rtt.Record(p.id, dstID, rttKey, now, &rtt); err != nil {
+		if err := p.rtt.Record(now, rttKey, p.id, dstID, &rtt); err != nil {
 			p.log.Error("failed to record rtt", "err", err)
 		}
 	}

@@ -211,7 +211,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "sum(rate(jittermon_downstreamJitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_downstreamJitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0\n\n",
+          "expr": "sum(rate(jittermon_downstream_jitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_downstream_jitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "downstream jitter",
@@ -225,7 +225,7 @@
             "type": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(jittermon_upstreamJitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_upstreamJitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0\n",
+          "expr": "sum(rate(jittermon_upstream_jitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_upstream_jitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
           "hide": false,
           "instant": false,
           "legendFormat": "upstream jitter",
@@ -252,7 +252,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum by (src) (increase(jittermon_packetlost_requests_total{}[$__rate_interval])) / sum by (src) (increase(jittermon_packetsent_requests_total{}[$__rate_interval]))",
+          "expr": "sum by (src) (increase(jittermon_lost_packets_requests_total{}[$__rate_interval])) / sum by (src) (increase(jittermon_sent_packets_requests_total{}[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "packet loss",
@@ -291,6 +291,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 12,
+  "version": 13,
   "weekStart": ""
 }

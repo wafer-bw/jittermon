@@ -23,7 +23,7 @@ func NewCSV() *CSV {
 	return &CSV{mu: &sync.Mutex{}}
 }
 
-func (r CSV) Record(src, dst string, key string, tsm time.Time, dur *time.Duration) error {
+func (r CSV) Record(tsm time.Time, key, src, dst string, dur *time.Duration) error {
 	fn := fmt.Sprintf("%s.csv", key)
 
 	f, err := os.OpenFile(fn, os.O_APPEND|os.O_CREATE|os.O_WRONLY, fileMode)
