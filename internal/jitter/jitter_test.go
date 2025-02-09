@@ -62,11 +62,11 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 
 		b.Sample(pid, jitter.Packet{
 			S: now.Add(1 * time.Second),
-			R: now.Add(1*time.Second + 60*time.Millisecond),
+			R: now.Add(1*time.Second + 50*time.Millisecond),
 		})
 		b.Sample(pid, jitter.Packet{
 			S: now.Add(2 * time.Second),
-			R: now.Add(2*time.Second + 50*time.Millisecond),
+			R: now.Add(2*time.Second + 40*time.Millisecond),
 		})
 
 		jitter, ok := b.Jitter(pid)
