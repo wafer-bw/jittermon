@@ -49,7 +49,7 @@ func (r *Prometheus) Record(src, dst string, key string, tsm time.Time, dur *tim
 		r.counters = map[string]*prometheus.CounterVec{}
 	}
 
-	hist, ok := r.histograms[k]
+	hist, ok := r.histograms[key]
 	if !ok {
 		hist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: namespace,
@@ -58,12 +58,12 @@ func (r *Prometheus) Record(src, dst string, key string, tsm time.Time, dur *tim
 			Buckets:   []float64{0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1},
 		}, []string{"src", "dst"}) // TODO: change to local/remote?
 		if err := prometheus.Register(hist); err != nil {
-			return err
+			return fmt.Errorf("could not register histogram for %s: %w", key, err)
 		}
 		r.histograms[k] = hist
 	}
 
-	count, ok := r.counters[k]
+	count, ok := r.counters[key]
 	if !ok {
 		count = prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
@@ -71,7 +71,7 @@ func (r *Prometheus) Record(src, dst string, key string, tsm time.Time, dur *tim
 			Help:      fmt.Sprintf("Total number of %s observations", key),
 		}, []string{"src", "dst"}) // TODO: change to local/remote?
 		if err := prometheus.Register(count); err != nil {
-			return err
+			return fmt.Errorf("could not register counter for %s: %w", key, err)
 		}
 		r.counters[k] = count
 	}
