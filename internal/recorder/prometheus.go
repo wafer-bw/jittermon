@@ -60,7 +60,7 @@ func (r *Prometheus) Record(src, dst string, key string, tsm time.Time, dur *tim
 		if err := prometheus.Register(hist); err != nil {
 			return fmt.Errorf("could not register histogram for %s: %w", key, err)
 		}
-		r.histograms[k] = hist
+		r.histograms[key] = hist
 	}
 
 	count, ok := r.counters[key]
@@ -73,7 +73,7 @@ func (r *Prometheus) Record(src, dst string, key string, tsm time.Time, dur *tim
 		if err := prometheus.Register(count); err != nil {
 			return fmt.Errorf("could not register counter for %s: %w", key, err)
 		}
-		r.counters[k] = count
+		r.counters[key] = count
 	}
 
 	if dur != nil {
