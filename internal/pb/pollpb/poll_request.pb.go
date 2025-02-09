@@ -109,6 +109,9 @@ type PollRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// The identity of the sending peer.
+	//
+	// Currently this field is not used, instead identity is determined by the
+	// source address of the request.
 	Id *string
 	// The time this message was dispatched from the sending peer.
 	Timestamp *timestamppb.Timestamp

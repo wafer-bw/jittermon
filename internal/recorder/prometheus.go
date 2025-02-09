@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,14 +22,24 @@ const (
 var _ peer.Recorder = (*Prometheus)(nil)
 
 type Prometheus struct {
-	Addr string
-
+	mu         *sync.Mutex
+	addr       string
 	server     *http.Server
 	counters   map[string]*prometheus.CounterVec
 	histograms map[string]*prometheus.HistogramVec
 }
 
-func (r *Prometheus) Record(src, dst peer.PeerID, key string, tsm time.Time, dur *time.Duration) error {
+func NewPrometheus(addr string) *Prometheus {
+	return &Prometheus{
+		mu:   &sync.Mutex{},
+		addr: addr,
+	}
+}
+
+func (r *Prometheus) Record(src, dst string, key string, tsm time.Time, dur *time.Duration) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	k := fmt.Sprintf("%s-%s-%s", src, dst, key)
 
 	if r.histograms == nil {
@@ -66,16 +77,16 @@ func (r *Prometheus) Record(src, dst peer.PeerID, key string, tsm time.Time, dur
 	}
 
 	if dur != nil {
-		hist.WithLabelValues(string(src), string(dst)).Observe(dur.Seconds())
+		hist.WithLabelValues(src, dst).Observe(dur.Seconds())
 	}
-	count.WithLabelValues(string(src), string(dst)).Inc()
+	count.WithLabelValues(src, dst).Inc()
 
 	return nil
 }
 
 func (r *Prometheus) Start(ctx context.Context) error {
 	s := &http.Server{
-		Addr:         r.Addr,
+		Addr:         r.addr,
 		Handler:      promhttp.Handler(),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,

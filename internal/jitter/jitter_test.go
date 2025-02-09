@@ -16,7 +16,7 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.HostPacketBuffers{}
+		b := jitter.NewHostPacketBuffers()
 
 		b.Sample(pid, jitter.Packet{
 			S: now.Add(1 * time.Second),
@@ -37,7 +37,7 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.HostPacketBuffers{}
+		b := jitter.NewHostPacketBuffers()
 
 		b.Sample(pid, jitter.Packet{
 			S: now.Add(1 * time.Second),
@@ -58,7 +58,7 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.HostPacketBuffers{}
+		b := jitter.NewHostPacketBuffers()
 
 		b.Sample(pid, jitter.Packet{
 			S: now.Add(1 * time.Second),
@@ -79,7 +79,7 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.HostPacketBuffers{}
+		b := jitter.NewHostPacketBuffers()
 
 		b.Sample(pid, jitter.Packet{
 			S: now.Add(1 * time.Second),
@@ -100,7 +100,7 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.HostPacketBuffers{}
+		b := jitter.NewHostPacketBuffers()
 
 		b.Sample(pid, jitter.Packet{
 			S: now.Add(1 * time.Second),
@@ -121,7 +121,7 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.HostPacketBuffers{}
+		b := jitter.NewHostPacketBuffers()
 
 		b.Sample(pid, jitter.Packet{
 			S: now.Add(1 * time.Second),
@@ -142,7 +142,7 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.HostPacketBuffers{}
+		b := jitter.NewHostPacketBuffers()
 
 		b.Sample(pid, jitter.Packet{
 			S: now.Add(1 * time.Second),
@@ -163,7 +163,7 @@ func TestPeerRequestBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.HostPacketBuffers{}
+		b := jitter.NewHostPacketBuffers()
 
 		_, ok := b.Jitter(pid)
 		require.False(t, ok)

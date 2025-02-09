@@ -12,7 +12,7 @@ import (
 )
 
 type DoPoller interface {
-	DoPoll(context.Context, pollpb.PollServiceClient) error
+	DoPoll(ctx context.Context, client pollpb.PollServiceClient, addr string) error
 }
 
 type Client struct {
@@ -45,7 +45,7 @@ func (c *Client) Start(ctx context.Context) error {
 		select {
 		case <-t.C:
 			pollCtx, cancel := context.WithTimeout(ctx, c.Interval)
-			_ = c.Poller.DoPoll(pollCtx, client) // TODO: handle error.
+			_ = c.Poller.DoPoll(pollCtx, client, c.Addr)
 			cancel()
 		case <-c.stopCh:
 			return nil

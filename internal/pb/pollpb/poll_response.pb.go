@@ -22,7 +22,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// TODO: can this just be merged with PollRequest into PollMessage?
 type PollResponse struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
@@ -134,6 +133,9 @@ type PollResponse_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// The identity of the responding peer.
+	//
+	// Currently this field is not used, instead identity is determined by the
+	// target address of the request.
 	Id *string
 	// The time this message was dispatched from the responding peer.
 	Timestamp *timestamppb.Timestamp

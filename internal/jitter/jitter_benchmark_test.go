@@ -4,8 +4,8 @@ package jitter_test
 // goarch: arm64
 // pkg: github.com/wafer-bw/jittermon/internal/jitter
 // cpu: Apple M2 Max
-// BenchmarkPeerRequestBuffers_Jitter-12    	100000000	        10.96 ns/op	       0 B/op	       0 allocs/op
-// BenchmarkPeerRequestBuffers_Sample-12    	 3497463	       367.1 ns/op	     317 B/op	       3 allocs/op
+// BenchmarkPeerRequestBuffers_Jitter-12    	52776152	        22.05 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkPeerRequestBuffers_Sample-12    	 3575097	       378.6 ns/op	     312 B/op	       3 allocs/op
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ import (
 
 func BenchmarkPeerRequestBuffers_Jitter(b *testing.B) {
 	now := time.Now()
-	buffers := jitter.HostPacketBuffers{}
+	buffers := jitter.NewHostPacketBuffers()
 
 	buffers.Sample("peer", jitter.Packet{S: now, R: now.Add(52 * time.Millisecond)})
 	buffers.Sample("peer", jitter.Packet{S: now.Add(52 * time.Millisecond), R: now.Add(100 * time.Millisecond)})
@@ -31,7 +31,7 @@ func BenchmarkPeerRequestBuffers_Jitter(b *testing.B) {
 
 func BenchmarkPeerRequestBuffers_Sample(b *testing.B) {
 	now := time.Now()
-	buffers := jitter.HostPacketBuffers{}
+	buffers := jitter.NewHostPacketBuffers()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

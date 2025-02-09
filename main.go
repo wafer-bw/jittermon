@@ -4,11 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"strings"
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/comms"
@@ -19,7 +17,6 @@ import (
 const shutdownTimeout time.Duration = 250 * time.Millisecond
 
 type config struct {
-	PeerID      string        `split_words:"true" default:""`
 	ListenAddr  string        `split_words:"true" default:":8080"`
 	SendAddrs   []string      `split_words:"true" default:":8081"`
 	MetricsAddr string        `split_words:"true" default:""`
@@ -38,8 +35,8 @@ func main() {
 
 	var jitterCSV, rttCSV peer.Recorder
 	if conf.Write {
-		jitterCSV = recorder.CSV{}
-		rttCSV = recorder.CSV{}
+		jitterCSV = recorder.NewCSV()
+		rttCSV = recorder.NewCSV()
 	}
 	_ = jitterCSV
 	_ = rttCSV
@@ -48,16 +45,12 @@ func main() {
 
 	var prometheus peer.Recorder
 	if conf.MetricsAddr != "" {
-		r := &recorder.Prometheus{Addr: conf.MetricsAddr}
+		r := recorder.NewPrometheus(conf.MetricsAddr)
 		prometheus = r
 		group = append(group, r)
 	}
 
-	if conf.PeerID == "" {
-		conf.PeerID = strings.Split(uuid.New().String(), "-")[1]
-	}
-
-	p, err := peer.NewPeer(conf.PeerID, prometheus, prometheus, prometheus, log)
+	p, err := peer.NewPeer(conf.ListenAddr, prometheus, prometheus, prometheus, log)
 	if err != nil {
 		log.Error(err.Error())
 		os.Exit(1)

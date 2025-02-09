@@ -9,6 +9,9 @@ option go_package = "github.com/wafer-bw/jittermon/internal/pb/pollpb";
 
 message PollResponse {
     // The identity of the responding peer.
+    //
+    // Currently this field is not used, instead identity is determined by the
+    // target address of the request.
     string id = 1;
 
     // The time this message was dispatched from the responding peer.
