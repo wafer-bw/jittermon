@@ -1,4 +1,4 @@
-package net
+package comms
 
 import (
 	"context"
