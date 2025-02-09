@@ -3,20 +3,13 @@ edition = "2023";
 package poll;
 
 import "google/protobuf/duration.proto";
-import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/wafer-bw/jittermon/internal/pb/pollpb";
 
 message PollResponse {
     // The identity of the responding peer.
-    //
-    // Currently this field is not used, instead identity is determined by the
-    // target address of the request.
     string id = 1;
 
-    // The time this message was dispatched from the responding peer.
-    google.protobuf.Timestamp timestamp = 2;
-
     // The jitter observed by the responding peer on incoming requests.
-    google.protobuf.Duration jitter = 3;
+    google.protobuf.Duration jitter = 2;
 }
