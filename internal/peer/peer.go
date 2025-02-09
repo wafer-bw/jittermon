@@ -107,7 +107,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 
 	if p.pl != nil {
 		if err := p.pl.Record(p.id, dstAddr, "packetsent", now, nil); err != nil {
-			p.log.Error("failed to record packet sent", "err", err)
+			p.log.Error("failed to record sent packet", "err", err)
 		}
 	}
 
@@ -115,7 +115,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 	if err != nil {
 		if p.pl != nil {
 			if err := p.pl.Record(p.id, dstAddr, "packetlost", now, nil); err != nil {
-				p.log.Error("failed to record packet lost", "err", err)
+				p.log.Error("failed to record lost packet", "err", err)
 			}
 		}
 		p.log.Error("poll failed", "err", err)
