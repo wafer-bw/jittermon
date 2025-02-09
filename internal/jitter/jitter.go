@@ -2,7 +2,6 @@
 package jitter
 
 import (
-	"sync"
 	"time"
 )
 
@@ -18,21 +17,16 @@ type Packet struct {
 }
 
 type HostPacketBuffers struct {
-	mu   *sync.Mutex
 	data map[string]packetBuffer
 }
 
 func NewHostPacketBuffers() HostPacketBuffers {
 	return HostPacketBuffers{
-		mu:   &sync.Mutex{},
 		data: map[string]packetBuffer{},
 	}
 }
 
 func (b HostPacketBuffers) Jitter(hostID string) (time.Duration, bool) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
 	buffer, ok := b.data[hostID]
 	if !ok {
 		return 0, false
@@ -42,9 +36,6 @@ func (b HostPacketBuffers) Jitter(hostID string) (time.Duration, bool) {
 }
 
 func (b HostPacketBuffers) Sample(hostID string, e Packet) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
 	buffer := b.data[hostID] // get host packet buffer or new buffer if not exists
 	buffer.push(e)           // push new packet to buffer
 	b.data[hostID] = buffer  // update host buffer
