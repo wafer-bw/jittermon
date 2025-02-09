@@ -39,3 +39,4 @@ docker compose -f demo/docker-compose-fly.yml down
   - Use ICMP for RTT?
   - Look into establishing streaming connections to avoid TCP?
   - Cobra CLI
+- add tracing
