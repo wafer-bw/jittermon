@@ -39,8 +39,8 @@ type Recorder interface {
 
 type PeerID string
 
-func (p PeerID) String() string {
-	return string(p)
+func (pid PeerID) String() string {
+	return string(pid)
 }
 
 // TODO: a better way of specifying which recorders to use and which metrics
