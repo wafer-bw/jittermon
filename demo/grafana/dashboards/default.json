@@ -172,6 +172,18 @@
               {
                 "id": "min",
                 "value": 0.01
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#00000000",
+                      "value": null
+                    }
+                  ]
+                }
               }
             ]
           }
@@ -291,6 +303,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 16,
+  "version": 17,
   "weekStart": ""
 }
