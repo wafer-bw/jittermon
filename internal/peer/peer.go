@@ -171,7 +171,7 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 
 	jitterPb := resp.GetJitter()
 	if jitterPb == nil {
-		p.log.Error("no jitter in response")
+		p.log.Warn("no jitter in response")
 		return fmt.Errorf("no jitter in response")
 	}
 	jitter := jitterPb.AsDuration()

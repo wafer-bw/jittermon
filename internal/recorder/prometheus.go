@@ -29,10 +29,11 @@ type Prometheus struct {
 	histograms map[string]*prometheus.HistogramVec
 }
 
-func NewPrometheus(addr string) *Prometheus {
+func NewPrometheus(addr string, log *slog.Logger) *Prometheus {
 	return &Prometheus{
 		mu:   &sync.Mutex{},
 		addr: addr,
+		log:  log,
 	}
 }
 
