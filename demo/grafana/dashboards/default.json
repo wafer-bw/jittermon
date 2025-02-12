@@ -80,11 +80,11 @@
               },
               {
                 "color": "#EAB839",
-                "value": 0.025
+                "value": 0.005
               },
               {
                 "color": "red",
-                "value": 0.05
+                "value": 0.02
               }
             ]
           },
@@ -303,6 +303,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 18,
+  "version": 20,
   "weekStart": ""
 }
