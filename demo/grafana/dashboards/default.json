@@ -264,7 +264,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum by (src) (increase(jittermon_lost_packets_total{}[$__rate_interval])) / sum by (src) (increase(jittermon_sent_packets_total{}[$__rate_interval])) <= 1",
+          "expr": "clamp_max(sum by (src) (increase(jittermon_lost_packets_total{}[$__rate_interval])) / sum by (src) (increase(jittermon_sent_packets_total{}[$__rate_interval])), 1)",
           "hide": false,
           "instant": false,
           "legendFormat": "packet loss",
@@ -303,6 +303,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 17,
+  "version": 18,
   "weekStart": ""
 }
