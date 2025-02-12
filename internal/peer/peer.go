@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wafer-bw/jittermon/internal/comms"
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/pb/pollpb"
@@ -13,55 +15,106 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const (
-	downstreamJitterKey string = "downstream_jitter"
-	upstreamJitterKey   string = "upstream_jitter"
-	sentPacketsKey      string = "sent_packets"
-	lostPacketsKey      string = "lost_packets"
-	rttKey              string = "rtt"
-)
-
 var _ pollpb.PollServiceServer = (*Peer)(nil)
 var _ comms.DoPoller = (*Peer)(nil)
 
-// Recorder is capable of persisting a keyed duration value for an interaction
-// between two peers in some storage media or mechanism.
-//
-// src: source peer address.
-// dst: destination peer address.
-// key: identifies the duration value's meaning.
-// tsm: observation timestamp of the interaction.
-// dur: duration value (e.g. jitter, rtt, etc).
-//
-// TODO: expand out var names probably.
-// TODO: maybe make src/dst be local/remote instead?
 type Recorder interface {
-	Record(tsm time.Time, key, src, dst string, dur *time.Duration) error
+	Record(context.Context, MetricSample)
 }
 
-// TODO: a better way of specifying which recorders to use and which metrics
-// to record to each recorder.
+type RecorderFunc func(context.Context, MetricSample)
+
+func (f RecorderFunc) Record(ctx context.Context, s MetricSample) {
+	f(ctx, s)
+}
+
+type Recorders []func(Recorder) Recorder
+
+func (rs Recorders) Chain() Recorder {
+	terminal := RecorderFunc(func(ctx context.Context, s MetricSample) { return })
+	if len(rs) == 0 {
+		return terminal
+	}
+
+	r := rs[len(rs)-1](terminal)
+	for i := len(rs) - 1; i >= 0; i-- {
+		r = rs[i](r)
+	}
+
+	return r
+}
+
+type MetricType string
+
+const (
+	MetricTypeDownstreamJitter MetricType = "downstream_jitter"
+	MetricTypeUpstreamJitter   MetricType = "upstream_jitter"
+	MetricTypeSentPackets      MetricType = "sent_packets"
+	MetricTypeLostPackets      MetricType = "lost_packets"
+	MetricTypeRTT              MetricType = "rtt"
+)
+
+type MetricSample struct {
+	Time time.Time
+	Type MetricType
+	Src  string
+	Dst  string
+	Val  any
+}
+
+type Option func(*Peer) error
+
+func WithLogger(log *slog.Logger) Option {
+	return func(p *Peer) error {
+		p.log = log
+		return nil
+	}
+}
+
+func WithID(id string) Option {
+	return func(p *Peer) error {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return nil
+		}
+		p.id = id
+		return nil
+	}
+}
+
+func WithRecorders(recorders ...func(Recorder) Recorder) Option {
+	return func(p *Peer) error {
+		p.r = Recorders(recorders).Chain()
+		return nil
+	}
+}
+
 type Peer struct {
 	id             string
 	log            *slog.Logger
-	jitter         Recorder
-	rtt            Recorder
-	pl             Recorder
+	r              Recorder
 	requestBuffers jitter.HostPacketBuffers
 
 	pollpb.UnimplementedPollServiceServer
 }
 
-// TODO: switch to functional options or options struct?
-func NewPeer(id string, jitRecorder, rttRecorder, plRecorder Recorder, log *slog.Logger) (*Peer, error) {
-	return &Peer{
-		id:             id,
-		log:            log,
-		jitter:         jitRecorder,
-		rtt:            rttRecorder,
-		pl:             plRecorder,
+func NewPeer(opts ...Option) (*Peer, error) {
+	p := &Peer{
+		id:             strings.Split(uuid.New().String(), "-")[1],
+		log:            slog.New(slog.DiscardHandler),
 		requestBuffers: jitter.NewHostPacketBuffers(),
-	}, nil
+	}
+
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		if err := opt(p); err != nil {
+			return nil, err
+		}
+	}
+
+	return p, nil
 }
 
 // Poll handles incoming poll requests.
@@ -87,15 +140,8 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 		return resp, nil
 	}
 
+	p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeDownstreamJitter, Src: srcID, Dst: p.id, Val: jitter})
 	resp.SetJitter(durationpb.New(jitter))
-
-	if p.jitter != nil {
-		if err := p.jitter.Record(now, downstreamJitterKey, srcID, p.id, &jitter); err != nil {
-			p.log.Error("failed to record downstream jitter", "err", err)
-		}
-	}
-
-	p.log.Debug("", "src", srcID, "dst", p.id, downstreamJitterKey, jitter)
 
 	return resp, nil
 }
@@ -107,19 +153,10 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 	req.SetId(p.id)
 	req.SetTimestamp(timestamppb.New(now))
 
-	if p.pl != nil {
-		if err := p.pl.Record(now, sentPacketsKey, p.id, dstAddr, nil); err != nil {
-			p.log.Error("failed to record sent packet", "err", err)
-		}
-	}
-
+	p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeSentPackets, Src: p.id, Dst: dstAddr, Val: struct{}{}})
 	resp, err := client.Poll(ctx, req)
 	if err != nil {
-		if p.pl != nil {
-			if err := p.pl.Record(now, lostPacketsKey, p.id, dstAddr, nil); err != nil {
-				p.log.Error("failed to record lost packet", "err", err)
-			}
-		}
+		p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeLostPackets, Src: p.id, Dst: dstAddr, Val: struct{}{}})
 		p.log.Error("poll failed", "err", err)
 		return err
 	}
@@ -139,20 +176,8 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 	}
 	jitter := jitterPb.AsDuration()
 
-	if p.jitter != nil {
-		if err := p.jitter.Record(now, upstreamJitterKey, p.id, dstID, &jitter); err != nil {
-			p.log.Error("failed to record upstream jitter", "err", err)
-		}
-	}
-
-	if p.rtt != nil {
-		if err := p.rtt.Record(now, rttKey, p.id, dstID, &rtt); err != nil {
-			p.log.Error("failed to record rtt", "err", err)
-		}
-	}
-
-	p.log.Debug("", "src", p.id, "dst", dstID, rttKey, rtt)
-	p.log.Debug("", "src", p.id, "dst", dstID, upstreamJitterKey, jitter)
+	p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeUpstreamJitter, Src: p.id, Dst: dstID, Val: jitter})
+	p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeRTT, Src: p.id, Dst: dstID, Val: rtt})
 
 	return nil
 }

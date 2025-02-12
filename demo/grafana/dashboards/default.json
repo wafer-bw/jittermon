@@ -252,7 +252,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum by (src) (increase(jittermon_lost_packets_requests_total{}[$__rate_interval])) / sum by (src) (increase(jittermon_sent_packets_requests_total{}[$__rate_interval])) <= 1",
+          "expr": "sum by (src) (increase(jittermon_lost_packets_total{}[$__rate_interval])) / sum by (src) (increase(jittermon_sent_packets_total{}[$__rate_interval])) <= 1",
           "hide": false,
           "instant": false,
           "legendFormat": "packet loss",

@@ -3,6 +3,7 @@ package recorder
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -19,9 +20,8 @@ const (
 	idleTimeout  time.Duration = 5 * time.Second
 )
 
-var _ peer.Recorder = (*Prometheus)(nil)
-
 type Prometheus struct {
+	log        *slog.Logger
 	mu         *sync.Mutex
 	addr       string
 	server     *http.Server
@@ -36,50 +36,77 @@ func NewPrometheus(addr string) *Prometheus {
 	}
 }
 
-func (r *Prometheus) Record(tsm time.Time, key, src, dst string, dur *time.Duration) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.histograms == nil {
-		r.histograms = map[string]*prometheus.HistogramVec{}
+func (r Prometheus) DefaultRecorders() peer.Recorders {
+	return peer.Recorders{
+		r.RecordDuration,
+		r.RecordIncrement,
 	}
-	if r.counters == nil {
-		r.counters = map[string]*prometheus.CounterVec{}
-	}
+}
 
-	hist, ok := r.histograms[key]
-	if !ok {
-		hist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Name:      fmt.Sprintf("%s_duration_seconds", key),
-			Help:      fmt.Sprintf("A histogram of %s durations", key),
-			Buckets:   []float64{0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1},
-		}, []string{"src", "dst"}) // TODO: change to local/remote?
-		if err := prometheus.Register(hist); err != nil {
-			return fmt.Errorf("could not register histogram for %s: %w", key, err)
+func (r *Prometheus) RecordDuration(next peer.Recorder) peer.Recorder {
+	return peer.RecorderFunc(func(ctx context.Context, s peer.MetricSample) {
+		defer next.Record(ctx, s)
+		r.mu.Lock()
+		defer r.mu.Unlock()
+
+		if r.histograms == nil {
+			r.histograms = map[string]*prometheus.HistogramVec{}
 		}
-		r.histograms[key] = hist
-	}
 
-	count, ok := r.counters[key]
-	if !ok {
-		count = prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: namespace,
-			Name:      fmt.Sprintf("%s_requests_total", key),
-			Help:      fmt.Sprintf("Total number of %s observations", key),
-		}, []string{"src", "dst"}) // TODO: change to local/remote?
-		if err := prometheus.Register(count); err != nil {
-			return fmt.Errorf("could not register counter for %s: %w", key, err)
+		key := string(s.Type)
+		val, ok := s.Val.(time.Duration)
+		if !ok {
+			return
 		}
-		r.counters[key] = count
-	}
 
-	if dur != nil {
-		hist.WithLabelValues(src, dst).Observe(dur.Seconds())
-	}
-	count.WithLabelValues(src, dst).Inc()
+		histogram, ok := r.histograms[key]
+		if !ok {
+			histogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+				Namespace: namespace,
+				Name:      fmt.Sprintf("%s_duration_seconds", key),
+				Help:      fmt.Sprintf("A histogram of '%s' durations in seconds", key),
+				Buckets:   []float64{0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1},
+			}, []string{"src", "dst"}) // TODO: change to local/remote?
+			if err := prometheus.Register(histogram); err != nil {
+				r.log.Error("could not register histogram", "key", key, "err", err)
+			}
+			r.histograms[key] = histogram
+		}
 
-	return nil
+		histogram.WithLabelValues(s.Src, s.Dst).Observe(val.Seconds())
+	})
+}
+
+func (r *Prometheus) RecordIncrement(next peer.Recorder) peer.Recorder {
+	return peer.RecorderFunc(func(ctx context.Context, s peer.MetricSample) {
+		defer next.Record(ctx, s)
+		r.mu.Lock()
+		defer r.mu.Unlock()
+
+		if r.counters == nil {
+			r.counters = map[string]*prometheus.CounterVec{}
+		}
+
+		key := string(s.Type)
+		if _, ok := s.Val.(struct{}); !ok {
+			return
+		}
+
+		counter, ok := r.counters[key]
+		if !ok {
+			counter = prometheus.NewCounterVec(prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      fmt.Sprintf("%s_total", key),
+				Help:      fmt.Sprintf("Total number of '%s' observations", key),
+			}, []string{"src", "dst"}) // TODO: change to local/remote?
+			if err := prometheus.Register(counter); err != nil {
+				r.log.Error("could not register counter", "key", key, "err", err)
+			}
+			r.counters[key] = counter
+		}
+
+		counter.WithLabelValues(s.Src, s.Dst).Inc()
+	})
 }
 
 func (r *Prometheus) Start(ctx context.Context) error {
@@ -92,9 +119,11 @@ func (r *Prometheus) Start(ctx context.Context) error {
 	}
 	r.server = s
 
+	r.log.Info("starting prometheus server", "addr", r.addr)
 	return s.ListenAndServe()
 }
 
 func (r *Prometheus) Stop(ctx context.Context) error {
+	r.log.Debug("stopping prometheus server")
 	return r.server.Shutdown(ctx)
 }

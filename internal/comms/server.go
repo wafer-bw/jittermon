@@ -45,12 +45,14 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	defer listener.Close()
 
-	s.Log.Info("listening", "addr", listener.Addr())
+	s.Log.Info("starting gRPC server", "addr", listener.Addr())
 
 	return s.server.Serve(listener)
 }
 
 func (s *Server) Stop(ctx context.Context) error {
+	s.Log.Info("stopping server", "addr", s.Addr)
+
 	ok := make(chan struct{})
 	go func() {
 		s.server.GracefulStop()

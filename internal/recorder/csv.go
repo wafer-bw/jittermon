@@ -5,16 +5,13 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	"github.com/wafer-bw/jittermon/internal/peer"
 )
 
 const (
 	fileMode os.FileMode = 0644
 )
 
-var _ peer.Recorder = (*CSV)(nil)
-
+// TODO: reimplement.
 type CSV struct {
 	mu *sync.Mutex
 }

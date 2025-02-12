@@ -4,11 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"strings"
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/comms"
@@ -19,45 +17,36 @@ import (
 const shutdownTimeout time.Duration = 250 * time.Millisecond
 
 type config struct {
-	PeerID      string        `split_words:"true"`
-	ListenAddr  string        `split_words:"true" default:":8080"`
-	SendAddrs   []string      `split_words:"true" default:":8081"`
-	MetricsAddr string        `split_words:"true" default:""`
-	Interval    time.Duration `split_words:"true" default:"1s"`
-	LogLevel    slog.Level    `split_words:"true" default:"INFO"`
-	Write       bool          `split_words:"true" default:"false"`
+	PeerID      string            `split_words:"true"`
+	ListenAddr  string            `split_words:"true" default:":8080"`
+	SendAddrs   []string          `split_words:"true" default:":8081"`
+	MetricsAddr string            `split_words:"true" default:""`
+	Interval    time.Duration     `split_words:"true" default:"1s"`
+	LogLevel    slog.Level        `split_words:"true" default:"INFO"`
+	Metrics     []peer.MetricType `split_words:"true" default:"rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets"`
+	Write       bool              `split_words:"true" default:"false"`
 }
 
-// TODO: better convergance of configured recorders based on provided flags.
 func main() {
 	ctx := context.Background()
 	conf := &config{}
 	envconfig.MustProcess("JITTERMON", conf)
+	group := graceful.Group{}
+	recorders := peer.Recorders{recorder.MetricFilter(conf.Metrics...)}
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: conf.LogLevel}))
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 
-	var jitterCSV, rttCSV peer.Recorder
-	if conf.Write {
-		jitterCSV = recorder.NewCSV()
-		rttCSV = recorder.NewCSV()
-	}
-	_ = jitterCSV
-	_ = rttCSV
-
-	group := graceful.Group{}
-
-	var prometheus peer.Recorder
 	if conf.MetricsAddr != "" {
-		r := recorder.NewPrometheus(conf.MetricsAddr)
-		prometheus = r
-		group = append(group, r)
+		prometheus := recorder.NewPrometheus(conf.MetricsAddr)
+		group = append(group, prometheus)
+		recorders = append(recorders, prometheus.DefaultRecorders()...)
 	}
 
-	if conf.PeerID == "" {
-		conf.PeerID = strings.Split(uuid.New().String(), "-")[1]
-	}
-
-	p, err := peer.NewPeer(conf.PeerID, prometheus, prometheus, prometheus, log)
+	p, err := peer.NewPeer(
+		peer.WithID(conf.PeerID),
+		peer.WithLogger(log),
+		peer.WithRecorders(recorders...),
+	)
 	if err != nil {
 		log.Error(err.Error())
 		os.Exit(1)

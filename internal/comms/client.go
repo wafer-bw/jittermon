@@ -26,6 +26,8 @@ type Client struct {
 }
 
 func (c *Client) Start(ctx context.Context) error {
+	c.Log.Info("starting client", "addr", c.Addr)
+
 	c.stopCh = make(chan struct{})
 	c.doneCh = make(chan struct{})
 	defer close(c.doneCh)
@@ -56,6 +58,8 @@ func (c *Client) Start(ctx context.Context) error {
 }
 
 func (c *Client) Stop(ctx context.Context) error {
+	c.Log.Debug("stopping client", "addr", c.Addr)
+
 	close(c.stopCh)
 
 	select {
