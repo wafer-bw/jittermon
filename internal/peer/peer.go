@@ -11,6 +11,8 @@ import (
 	"github.com/wafer-bw/jittermon/internal/comms"
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/pb/pollpb"
+	"github.com/wafer-bw/jittermon/internal/recorder"
+	rec "github.com/wafer-bw/jittermon/internal/recorder"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -18,59 +20,10 @@ import (
 var _ pollpb.PollServiceServer = (*Peer)(nil)
 var _ comms.DoPoller = (*Peer)(nil)
 
-type Recorder interface {
-	Record(context.Context, MetricSample)
-}
-
-type RecorderFunc func(context.Context, MetricSample)
-
-func (f RecorderFunc) Record(ctx context.Context, s MetricSample) {
-	f(ctx, s)
-}
-
-type Recorders []func(Recorder) Recorder
-
-func (rs Recorders) Chain() Recorder {
-	terminal := RecorderFunc(func(ctx context.Context, s MetricSample) { return })
-	if len(rs) == 0 {
-		return terminal
-	}
-
-	r := rs[len(rs)-1](terminal)
-	for i := len(rs) - 1; i >= 0; i-- {
-		r = rs[i](r)
-	}
-
-	return r
-}
-
-type MetricType string
-
-const (
-	MetricTypeDownstreamJitter MetricType = "downstream_jitter"
-	MetricTypeUpstreamJitter   MetricType = "upstream_jitter"
-	MetricTypeSentPackets      MetricType = "sent_packets"
-	MetricTypeLostPackets      MetricType = "lost_packets"
-	MetricTypeRTT              MetricType = "rtt"
-)
-
-type MetricSample struct {
-	Time time.Time
-	Type MetricType
-	Src  string
-	Dst  string
-	Val  any
-}
-
+// TODO: docstring.
 type Option func(*Peer) error
 
-func WithLogger(log *slog.Logger) Option {
-	return func(p *Peer) error {
-		p.log = log
-		return nil
-	}
-}
-
+// TODO: docstring.
 func WithID(id string) Option {
 	return func(p *Peer) error {
 		id = strings.TrimSpace(id)
@@ -82,26 +35,38 @@ func WithID(id string) Option {
 	}
 }
 
-func WithRecorders(recorders ...func(Recorder) Recorder) Option {
+// TODO: docstring.
+func WithLogger(log *slog.Logger) Option {
 	return func(p *Peer) error {
-		p.r = Recorders(recorders).Chain()
+		p.log = log
 		return nil
 	}
 }
 
+// TODO: docstring.
+func WithRecorders(recorders ...func(rec.Recorder) rec.Recorder) Option {
+	return func(p *Peer) error {
+		p.r = rec.Chain(recorders...)
+		return nil
+	}
+}
+
+// TODO: docstring.
 type Peer struct {
 	id             string
 	log            *slog.Logger
-	r              Recorder
+	r              rec.Recorder
 	requestBuffers jitter.HostPacketBuffers
 
 	pollpb.UnimplementedPollServiceServer
 }
 
+// TODO: docstring.
 func NewPeer(opts ...Option) (*Peer, error) {
 	p := &Peer{
 		id:             strings.Split(uuid.New().String(), "-")[1],
 		log:            slog.New(slog.DiscardHandler),
+		r:              recorder.RecorderFunc(func(_ context.Context, _ recorder.Sample) {}),
 		requestBuffers: jitter.NewHostPacketBuffers(),
 	}
 
@@ -140,7 +105,7 @@ func (p *Peer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollR
 		return resp, nil
 	}
 
-	p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeDownstreamJitter, Src: srcID, Dst: p.id, Val: jitter})
+	p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeDownstreamJitter, Src: srcID, Dst: p.id, Val: jitter})
 	resp.SetJitter(durationpb.New(jitter))
 
 	return resp, nil
@@ -153,10 +118,10 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 	req.SetId(p.id)
 	req.SetTimestamp(timestamppb.New(now))
 
-	p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeSentPackets, Src: p.id, Dst: dstAddr, Val: struct{}{}})
+	p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeSentPackets, Src: p.id, Dst: dstAddr, Val: struct{}{}})
 	resp, err := client.Poll(ctx, req)
 	if err != nil {
-		p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeLostPackets, Src: p.id, Dst: dstAddr, Val: struct{}{}})
+		p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeLostPackets, Src: p.id, Dst: dstAddr, Val: struct{}{}})
 		p.log.Error("poll failed", "err", err)
 		return err
 	}
@@ -176,8 +141,8 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 	}
 	jitter := jitterPb.AsDuration()
 
-	p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeUpstreamJitter, Src: p.id, Dst: dstID, Val: jitter})
-	p.r.Record(ctx, MetricSample{Time: now, Type: MetricTypeRTT, Src: p.id, Dst: dstID, Val: rtt})
+	p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeUpstreamJitter, Src: p.id, Dst: dstID, Val: jitter})
+	p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeRTT, Src: p.id, Dst: dstID, Val: rtt})
 
 	return nil
 }

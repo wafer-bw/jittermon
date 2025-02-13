@@ -17,14 +17,14 @@ import (
 const shutdownTimeout time.Duration = 250 * time.Millisecond
 
 type config struct {
-	PeerID      string            `split_words:"true"`
-	ListenAddr  string            `split_words:"true" default:":8080"`
-	SendAddrs   []string          `split_words:"true" default:":8081"`
-	MetricsAddr string            `split_words:"true" default:""`
-	Interval    time.Duration     `split_words:"true" default:"1s"`
-	LogLevel    slog.Level        `split_words:"true" default:"INFO"`
-	Metrics     []peer.MetricType `split_words:"true" default:"rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets"`
-	Write       bool              `split_words:"true" default:"false"`
+	PeerID      string                `split_words:"true"`
+	ListenAddr  string                `split_words:"true" default:":8080"`
+	SendAddrs   []string              `split_words:"true" default:":8081"`
+	MetricsAddr string                `split_words:"true" default:""`
+	Interval    time.Duration         `split_words:"true" default:"1s"`
+	LogLevel    slog.Level            `split_words:"true" default:"INFO"`
+	Metrics     []recorder.SampleType `split_words:"true" default:"rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets"`
+	Write       bool                  `split_words:"true" default:"false"`
 }
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 	conf := &config{}
 	envconfig.MustProcess("JITTERMON", conf)
 	group := graceful.Group{}
-	recorders := peer.Recorders{recorder.MetricFilter(conf.Metrics...)}
+	recorders := []func(recorder.Recorder) recorder.Recorder{recorder.MetricFilter(conf.Metrics...)}
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: conf.LogLevel}))
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 

@@ -7,19 +7,21 @@ import (
 	"time"
 )
 
-const (
-	fileMode os.FileMode = 0644
-)
+const fileMode os.FileMode = 0644
 
-// TODO: reimplement.
+// TODO: implement the Recorder interface.
+// TODO: use Go 1.24 new working directory aware file i/o.
+// TODO: docstring.
 type CSV struct {
 	mu *sync.Mutex
 }
 
+// TODO: docstring.
 func NewCSV() *CSV {
 	return &CSV{mu: &sync.Mutex{}}
 }
 
+// TODO: docstring.
 func (r CSV) Record(tsm time.Time, key, src, dst string, dur *time.Duration) error {
 	fn := fmt.Sprintf("%s.csv", key)
 

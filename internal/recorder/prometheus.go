@@ -10,7 +10,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/wafer-bw/jittermon/internal/peer"
 )
 
 const (
@@ -20,6 +19,7 @@ const (
 	idleTimeout  time.Duration = 5 * time.Second
 )
 
+// TODO: docstring.
 type Prometheus struct {
 	log        *slog.Logger
 	mu         *sync.Mutex
@@ -29,6 +29,7 @@ type Prometheus struct {
 	histograms map[string]*prometheus.HistogramVec
 }
 
+// TODO: docstring.
 func NewPrometheus(addr string, log *slog.Logger) *Prometheus {
 	return &Prometheus{
 		mu:   &sync.Mutex{},
@@ -37,15 +38,17 @@ func NewPrometheus(addr string, log *slog.Logger) *Prometheus {
 	}
 }
 
-func (r Prometheus) DefaultRecorders() peer.Recorders {
-	return peer.Recorders{
+// TODO: docstring.
+func (r Prometheus) DefaultRecorders() []func(Recorder) Recorder {
+	return []func(Recorder) Recorder{
 		r.RecordDuration,
 		r.RecordIncrement,
 	}
 }
 
-func (r *Prometheus) RecordDuration(next peer.Recorder) peer.Recorder {
-	return peer.RecorderFunc(func(ctx context.Context, s peer.MetricSample) {
+// TODO: docstring.
+func (r *Prometheus) RecordDuration(next Recorder) Recorder {
+	return RecorderFunc(func(ctx context.Context, s Sample) {
 		defer next.Record(ctx, s)
 		r.mu.Lock()
 		defer r.mu.Unlock()
@@ -78,8 +81,9 @@ func (r *Prometheus) RecordDuration(next peer.Recorder) peer.Recorder {
 	})
 }
 
-func (r *Prometheus) RecordIncrement(next peer.Recorder) peer.Recorder {
-	return peer.RecorderFunc(func(ctx context.Context, s peer.MetricSample) {
+// TODO: docstring.
+func (r *Prometheus) RecordIncrement(next Recorder) Recorder {
+	return RecorderFunc(func(ctx context.Context, s Sample) {
 		defer next.Record(ctx, s)
 		r.mu.Lock()
 		defer r.mu.Unlock()
@@ -110,6 +114,7 @@ func (r *Prometheus) RecordIncrement(next peer.Recorder) peer.Recorder {
 	})
 }
 
+// TODO: docstring.
 func (r *Prometheus) Start(ctx context.Context) error {
 	s := &http.Server{
 		Addr:         r.addr,
@@ -124,6 +129,7 @@ func (r *Prometheus) Start(ctx context.Context) error {
 	return s.ListenAndServe()
 }
 
+// TODO: docstring.
 func (r *Prometheus) Stop(ctx context.Context) error {
 	r.log.Debug("stopping prometheus server")
 	return r.server.Shutdown(ctx)

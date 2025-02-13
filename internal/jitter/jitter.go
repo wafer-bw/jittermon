@@ -41,14 +41,22 @@ func (b HostPacketBuffers) Sample(hostID string, e Packet) {
 	b.data[hostID] = buffer  // update host buffer
 }
 
+func (b HostPacketBuffers) Len() int {
+	return len(b.data)
+}
+
+func (b HostPacketBuffers) HostBufferLen(host string) int {
+	return len(b.data[host])
+}
+
 type packetBuffer []Packet
 
-func (b *packetBuffer) jitter() (time.Duration, bool) {
-	if len(*b) < minSamples {
+func (pb *packetBuffer) jitter() (time.Duration, bool) {
+	if len(*pb) < minSamples {
 		return 0, false
 	}
 
-	i, j := (*b)[1], (*b)[0]
+	i, j := (*pb)[1], (*pb)[0]
 	Ri, Rj := i.R, j.R
 	Si, Sj := i.S, j.S
 	Jj := j.j
@@ -62,7 +70,7 @@ func (b *packetBuffer) jitter() (time.Duration, bool) {
 	// J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16
 	// J(i) = Jj + (|Dij| - Jj)/16
 	Ji := Jj + (Dij.Abs()-Jj)/time.Duration(gain)
-	(*b)[1].j = Ji
+	(*pb)[1].j = Ji
 
 	return Ji, true
 }
