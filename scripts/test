@@ -1,0 +1,6 @@
+#!/bin/sh
+
+set -e
+
+go test -shuffle=on -count=1 -race -failfast -timeout=30s -short -covermode=atomic -coverprofile=coverage.out `go list ./... | grep -v /pollpb`
+go tool cover -func=coverage.out | grep "total:" | grep "(statements)"
