@@ -22,7 +22,7 @@ linters:
     - predeclared
     - rowserrcheck
     - sqlclosecheck
-    - tenv
+    - usetesting
     - unconvert
     - unparam
     - wastedassign
