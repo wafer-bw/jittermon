@@ -20,10 +20,11 @@ import (
 var _ pollpb.PollServiceServer = (*Peer)(nil)
 var _ comms.DoPoller = (*Peer)(nil)
 
-// TODO: docstring.
+// Option is a function that configures a peer, used via [NewPeer].
 type Option func(*Peer) error
 
-// TODO: docstring.
+// WithID sets the id of the peer. If no id is provided a 4 character random one
+// will be generated.
 func WithID(id string) Option {
 	return func(p *Peer) error {
 		id = strings.TrimSpace(id)
@@ -35,7 +36,8 @@ func WithID(id string) Option {
 	}
 }
 
-// TODO: docstring.
+// WithLogger sets the [slog.Logger] the peer will use. If no logger is provided
+// a handler using [slog.DiscardHandler] will be used.
 func WithLogger(log *slog.Logger) Option {
 	return func(p *Peer) error {
 		p.log = log
@@ -43,7 +45,8 @@ func WithLogger(log *slog.Logger) Option {
 	}
 }
 
-// TODO: docstring.
+// WithRecorders sets the recorders the peer will use. They will be chained &
+// execute in the order they are provided.
 func WithRecorders(recorders ...func(rec.Recorder) rec.Recorder) Option {
 	return func(p *Peer) error {
 		p.r = rec.Chain(recorders...)
@@ -51,7 +54,8 @@ func WithRecorders(recorders ...func(rec.Recorder) rec.Recorder) Option {
 	}
 }
 
-// TODO: docstring.
+// Peer is capable of handling & sending incoming & outgoing requests
+// respectively. Always construct a new peer using [NewPeer].
 type Peer struct {
 	id             string
 	log            *slog.Logger
@@ -61,7 +65,6 @@ type Peer struct {
 	pollpb.UnimplementedPollServiceServer
 }
 
-// TODO: docstring.
 func NewPeer(opts ...Option) (*Peer, error) {
 	p := &Peer{
 		id:             strings.Split(uuid.New().String(), "-")[1],

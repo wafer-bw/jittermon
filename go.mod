@@ -8,6 +8,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/stretchr/testify v1.9.0
 	github.com/wafer-bw/go-toolbox/graceful v0.2.4
+	go.uber.org/mock v0.5.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.36.5
 )
@@ -16,6 +17,7 @@ tool (
 	github.com/daixiang0/gci
 	github.com/golang/mock/mockgen
 	github.com/joho/godotenv/cmd/godotenv
+	go.uber.org/mock/mockgen
 	golang.org/x/tools/cmd/goimports
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	google.golang.org/protobuf/cmd/protoc-gen-go
