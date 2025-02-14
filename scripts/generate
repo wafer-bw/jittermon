@@ -2,9 +2,6 @@
 
 set -e
 
-go install google.golang.org/protobuf/cmd/protoc-gen-go
-go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
-
 PREFIX="github.com/wafer-bw/jittermon"
 
 protoc -I . --go_out=. --go_opt=default_api_level=API_OPAQUE --go_opt=module=$PREFIX --go-grpc_out=. --go-grpc_opt=default_api_level=API_OPAQUE --go-grpc_opt=module=$PREFIX ./api/*/*.proto

@@ -8,7 +8,6 @@ package peer_test
 // BenchmarkDoPoll-12    	 4349839	       279.1 ns/op	     424 B/op	      11 allocs/op
 
 import (
-	"context"
 	"testing"
 
 	"github.com/wafer-bw/jittermon/internal/pb/pollpb"
@@ -27,7 +26,7 @@ func BenchmarkPoll(b *testing.B) {
 		req.SetId("id")
 		req.SetTimestamp(timestamppb.Now())
 
-		p.Poll(context.Background(), req)
+		_, _ = p.Poll(b.Context(), req)
 	}
 }
 
@@ -44,6 +43,6 @@ func BenchmarkDoPoll(b *testing.B) {
 		req.SetId("id")
 		req.SetTimestamp(timestamppb.Now())
 
-		p.DoPoll(context.Background(), client, "localhost")
+		_ = p.DoPoll(b.Context(), client, "localhost")
 	}
 }

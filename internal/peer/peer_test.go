@@ -110,12 +110,12 @@ func TestNew(t *testing.T) {
 
 		p, err := peer.NewPeer(peer.WithRecorders(rnoop))
 		require.NoError(t, err)
-		p.GetRecorder().Record(context.Background(), recorder.Sample{})
+		p.GetRecorder().Record(t.Context(), recorder.Sample{})
 		require.False(t, *executed)
 
 		p, err = peer.NewPeer(peer.WithRecorders(rset))
 		require.NoError(t, err)
-		p.GetRecorder().Record(context.Background(), recorder.Sample{})
+		p.GetRecorder().Record(t.Context(), recorder.Sample{})
 		require.True(t, *executed)
 	})
 }
@@ -134,7 +134,7 @@ func TestPoll(t *testing.T) {
 		req := &pollpb.PollRequest{}
 		req.SetId(id2)
 		req.SetTimestamp(timestamppb.Now())
-		res, err := p.Poll(context.Background(), req)
+		res, err := p.Poll(t.Context(), req)
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Equal(t, id1, res.GetId())
@@ -154,7 +154,7 @@ func TestPoll(t *testing.T) {
 		req := &pollpb.PollRequest{}
 		req.SetId(id)
 		req.SetTimestamp(timestamppb.Now())
-		res, err := p.Poll(context.Background(), req)
+		res, err := p.Poll(t.Context(), req)
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Nil(t, res.GetJitter())
@@ -171,7 +171,7 @@ func TestPoll(t *testing.T) {
 		req = &pollpb.PollRequest{}
 		req.SetId(id)
 		req.SetTimestamp(timestamppb.Now())
-		res, err = p.Poll(context.Background(), req)
+		res, err = p.Poll(t.Context(), req)
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.NotNil(t, res.GetJitter())
@@ -191,10 +191,9 @@ func TestPoll(t *testing.T) {
 		req := &pollpb.PollRequest{}
 		req.SetId("id")
 		req.SetTimestamp(timestamppb.Now())
-		res, err := p.Poll(context.Background(), req)
+		res, err := p.Poll(t.Context(), req)
 		require.NoError(t, err)
 		require.NotNil(t, res)
-
 	})
 
 	t.Run("returns error if no id is provided", func(t *testing.T) {
@@ -204,7 +203,7 @@ func TestPoll(t *testing.T) {
 		require.NoError(t, err)
 
 		req := &pollpb.PollRequest{}
-		res, err := p.Poll(context.Background(), req)
+		res, err := p.Poll(t.Context(), req)
 		require.Error(t, err)
 		require.Nil(t, res)
 	})
@@ -217,7 +216,7 @@ func TestPoll(t *testing.T) {
 
 		req := &pollpb.PollRequest{}
 		req.SetId("id")
-		res, err := p.Poll(context.Background(), req)
+		res, err := p.Poll(t.Context(), req)
 		require.Error(t, err)
 		require.Nil(t, res)
 	})
@@ -231,7 +230,7 @@ func TestDoPoll(t *testing.T) {
 		addr string = "localhost"
 	)
 
-	t.Run("successfull poll", func(t *testing.T) {
+	t.Run("successful poll", func(t *testing.T) {
 		t.Parallel()
 
 		mockClient := NewMockPollServiceClient(gomock.NewController(t))
@@ -249,7 +248,7 @@ func TestDoPoll(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("records successfull poll metrics", func(t *testing.T) {
+	t.Run("records successful poll metrics", func(t *testing.T) {
 		t.Parallel()
 
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
@@ -285,7 +284,8 @@ func TestDoPoll(t *testing.T) {
 			require.NotZero(t, 5*time.Millisecond)
 		}).Times(1)
 
-		peer.DoPoll(ctx, mockClient, addr)
+		err = peer.DoPoll(ctx, mockClient, addr)
+		require.NoError(t, err)
 	})
 
 	t.Run("records failed poll metrics", func(t *testing.T) {
@@ -315,7 +315,8 @@ func TestDoPoll(t *testing.T) {
 			require.Equal(t, struct{}{}, s.Val)
 		}).Times(1)
 
-		peer.DoPoll(ctx, mockClient, addr)
+		err = peer.DoPoll(ctx, mockClient, addr)
+		require.Error(t, err)
 	})
 
 	t.Run("returns an error if no id is provided in response", func(t *testing.T) {
