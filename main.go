@@ -32,7 +32,7 @@ func main() {
 	conf := &config{}
 	envconfig.MustProcess("JITTERMON", conf)
 	group := graceful.Group{}
-	recorders := []func(recorder.Recorder) recorder.Recorder{recorder.MetricFilter(conf.Metrics...)}
+	recorders := []recorder.ChainLink{recorder.MetricFilter(conf.Metrics...)}
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: conf.LogLevel}))
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 

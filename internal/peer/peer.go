@@ -47,7 +47,7 @@ func WithLogger(log *slog.Logger) Option {
 
 // WithRecorders sets the recorders the peer will use. They will be chained &
 // execute in the order they are provided.
-func WithRecorders(recorders ...func(rec.Recorder) rec.Recorder) Option {
+func WithRecorders(recorders ...recorder.ChainLink) Option {
 	return func(p *Peer) error {
 		p.r = rec.Chain(recorders...)
 		return nil
@@ -148,4 +148,8 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 	p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeRTT, Src: p.id, Dst: dstID, Val: rtt})
 
 	return nil
+}
+
+func (p *Peer) DoTrace(ctx context.Context) {
+	return
 }

@@ -4,7 +4,8 @@ import (
 	"context"
 )
 
-// TODO: docstring.
+// MetricsFilter returns a [ChainLink] that filters out metric samples
+// that are not in the provided list of [SampleType]s.
 func MetricFilter(metrics ...SampleType) func(next Recorder) Recorder {
 	allowList := map[string]struct{}{}
 	for _, metric := range metrics {

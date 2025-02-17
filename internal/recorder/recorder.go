@@ -9,53 +9,51 @@ import (
 type SampleType string
 
 const (
-	// TODO: docstring.
 	SampleTypeDownstreamJitter SampleType = "downstream_jitter"
-
-	// TODO: docstring.
-	SampleTypeUpstreamJitter SampleType = "upstream_jitter"
-
-	// TODO: docstring.
-	SampleTypeSentPackets SampleType = "sent_packets"
-
-	// TODO: docstring.
-	SampleTypeLostPackets SampleType = "lost_packets"
-
-	// TODO: docstring.
-	SampleTypeRTT SampleType = "rtt"
+	SampleTypeUpstreamJitter   SampleType = "upstream_jitter"
+	SampleTypeSentPackets      SampleType = "sent_packets"
+	SampleTypeLostPackets      SampleType = "lost_packets"
+	SampleTypeRTT              SampleType = "rtt" // round trip time (ping).
 )
 
-// TODO: docstring.
+// Sample is the data structure that is recorded by a [Recorder].
 type Sample struct {
 	Time time.Time
 	Type SampleType
-	Src  string
-	Dst  string
-	Val  any
+	Src  string // source address/id/name.
+	Dst  string // destination address/id/name.
+	Val  any    // value to record if there is one.
 }
 
-// TODO: docstring.
+// ChainLink is a function that accepts and returns a [Recorder]. The returned
+// [Recorder] should call `next.Record()` to continue the chain.
+type ChainLink func(next Recorder) Recorder
+
+// Recorder is capable of recording the provided [Sample] and should respect
+// the lifetime of the provided [context.Context].
 type Recorder interface {
 	Record(context.Context, Sample)
 }
 
-// TODO: docstring.
+// RecorderFunc is an adapter to allow the use of ordinary functions as
+// recorders. If f is a function with the appropriate signature, RecorderFunc(f)
+// is a [Recorder] that calls f.
 type RecorderFunc func(context.Context, Sample)
 
-// TODO: docstring.
+// Record calls f(ctx, s).
 func (f RecorderFunc) Record(ctx context.Context, s Sample) {
 	f(ctx, s)
 }
 
-// TODO: docstring.
-func Chain(recorders ...func(Recorder) Recorder) Recorder {
+// Chain [ChainLink]s together to create a single [Recorder].
+func Chain(recorders ...ChainLink) Recorder {
 	terminal := RecorderFunc(func(ctx context.Context, s Sample) { return })
 	if len(recorders) == 0 {
 		return terminal
 	}
 
 	r := recorders[len(recorders)-1](terminal)
-	for i := len(recorders) - 1; i >= 0; i-- {
+	for i := len(recorders) - 2; i >= 0; i-- {
 		r = recorders[i](r)
 	}
 

@@ -13,13 +13,12 @@ import (
 )
 
 const (
-	namespace    string        = "jittermon"
-	readTimeout  time.Duration = 1 * time.Second
-	writeTimeout time.Duration = 2 * time.Second
-	idleTimeout  time.Duration = 5 * time.Second
+	namespace    string        = "jittermon"     // TODO: make controllable.
+	readTimeout  time.Duration = 1 * time.Second // TODO: make controllable.
+	writeTimeout time.Duration = 2 * time.Second // TODO: make controllable.
+	idleTimeout  time.Duration = 5 * time.Second // TODO: make controllable.
 )
 
-// TODO: docstring.
 type Prometheus struct {
 	log        *slog.Logger
 	mu         *sync.Mutex
@@ -29,7 +28,8 @@ type Prometheus struct {
 	histograms map[string]*prometheus.HistogramVec
 }
 
-// TODO: docstring.
+// NewPrometheus returns a new [Prometheus] which must be started and stopped
+// using [Prometheus.Start] and [Prometheus.Stop] respectively.
 func NewPrometheus(addr string, log *slog.Logger) *Prometheus {
 	return &Prometheus{
 		mu:   &sync.Mutex{},
@@ -38,15 +38,16 @@ func NewPrometheus(addr string, log *slog.Logger) *Prometheus {
 	}
 }
 
-// TODO: docstring.
-func (r Prometheus) DefaultRecorders() []func(Recorder) Recorder {
-	return []func(Recorder) Recorder{
+// DefaultRecorders returns the default, recommended recorders.
+func (r Prometheus) DefaultRecorders() []ChainLink {
+	return []ChainLink{
 		r.RecordDuration,
 		r.RecordIncrement,
 	}
 }
 
-// TODO: docstring.
+// RecordDuration records samples whose [Sample.Val] is a [time.Duration].
+// It records the duration in seconds to a [prometheus.HistogramVec].
 func (r *Prometheus) RecordDuration(next Recorder) Recorder {
 	return RecorderFunc(func(ctx context.Context, s Sample) {
 		defer next.Record(ctx, s)
@@ -81,7 +82,8 @@ func (r *Prometheus) RecordDuration(next Recorder) Recorder {
 	})
 }
 
-// TODO: docstring.
+// RecordIncrement records samples whose [Sample.Val] is `strut{}{}`, such
+// samples have no value and are only used to increment a counter.
 func (r *Prometheus) RecordIncrement(next Recorder) Recorder {
 	return RecorderFunc(func(ctx context.Context, s Sample) {
 		defer next.Record(ctx, s)
@@ -114,7 +116,7 @@ func (r *Prometheus) RecordIncrement(next Recorder) Recorder {
 	})
 }
 
-// TODO: docstring.
+// Start the prometheus metrics endpoint server.
 func (r *Prometheus) Start(ctx context.Context) error {
 	s := &http.Server{
 		Addr:         r.addr,
@@ -129,7 +131,7 @@ func (r *Prometheus) Start(ctx context.Context) error {
 	return s.ListenAndServe()
 }
 
-// TODO: docstring.
+// Stop the prometheus metrics endpoint server.
 func (r *Prometheus) Stop(ctx context.Context) error {
 	r.log.Debug("stopping prometheus server")
 	return r.server.Shutdown(ctx)
