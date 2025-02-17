@@ -39,6 +39,20 @@ func TestHostPacketBuffers_Jitter(t *testing.T) {
 		require.Equal(t, time.Duration(0), jitter)
 	})
 
+	t.Run("handles sampling via multiple threads safely", func(t *testing.T) {
+		t.Parallel()
+
+		pid := "1"
+		b := jitter.NewHostPacketBuffers()
+
+		for range 1000 {
+			go b.Sample(pid, jitter.Packet{
+				S: time.Now(),
+				R: time.Now().Add(50 * time.Millisecond),
+			})
+		}
+	})
+
 	t.Run("measures delayed jitter", func(t *testing.T) {
 		t.Parallel()
 
