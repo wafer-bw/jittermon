@@ -29,13 +29,10 @@ docker compose -f demo/docker-compose-fly.yml down
   costs $2/mo.
 
 ## TODOs
-- handle timezones
-- loki log ingestion in demo?
-- Handle all possible I/O outside of req/resp in a separate go routine reading
-  from a channel?
+- add tracing via using mimir and otel
+- route tracing over ICMP
 - long term nice to have
   - checks workflow only runs when go code changes
   - Use ICMP for RTT?
-  - Look into establishing streaming connections to avoid TCP?
+  - Look into establishing streaming connections to avoid TCP overhead?
   - Cobra CLI
-- add tracing
