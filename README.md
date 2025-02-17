@@ -29,10 +29,11 @@ docker compose -f demo/docker-compose-fly.yml down
   costs $2/mo.
 
 ## TODOs
-- add tracing via using mimir and otel
 - route tracing over ICMP
 - long term nice to have
-  - checks workflow only runs when go code changes
+  - add tracing via otel
+    - collect traces in grafana via mimir
+  - make checks workflow only runs when go code changes
   - Use ICMP for RTT?
   - Look into establishing streaming connections to avoid TCP overhead?
   - Cobra CLI
