@@ -425,7 +425,7 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "count_over_time(\n  {compose_project=\"demo\", compose_service=\"jittermon\", container=\"/demo-jittermon-1\", service_name=\"/demo-jittermon-1\"}[1m]\n  | label_format level=detected_level\n)",
+          "expr": "count_over_time(\n  {compose_project=\"demo\", compose_service=\"jittermon\", container=\"/demo-jittermon-1\", service_name=\"/demo-jittermon-1\"}[$__auto]\n  | label_format level=detected_level\n)",
           "legendFormat": "{{level}}",
           "queryType": "range",
           "refId": "A"
@@ -506,6 +506,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 22,
+  "version": 29,
   "weekStart": ""
 }
