@@ -4,8 +4,8 @@ package jitter_test
 // goarch: arm64
 // pkg: github.com/wafer-bw/jittermon/internal/jitter
 // cpu: Apple M2 Max
-// BenchmarkHostPacketBuffers_Jitter-12    	83080020	        14.45 ns/op	       0 B/op	       0 allocs/op
-// BenchmarkHostPacketBuffers_Sample-12    	23890917	        49.44 ns/op	     112 B/op	       0 allocs/op
+// BenchmarkHostPacketBuffers_Jitter-12    	42102183	        27.68 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkHostPacketBuffers_Sample-12    	22092580	        51.34 ns/op	     112 B/op	       0 allocs/op
 
 import (
 	"testing"
