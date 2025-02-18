@@ -53,6 +53,7 @@ func Chain(recorders ...ChainLink) Recorder {
 	}
 
 	r := recorders[len(recorders)-1](terminal)
+	//nolint:mnd // link second last to last (r) on first iteration.
 	for i := len(recorders) - 2; i >= 0; i-- {
 		r = recorders[i](r)
 	}

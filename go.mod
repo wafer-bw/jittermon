@@ -5,8 +5,10 @@ go 1.24.0
 require (
 	github.com/google/uuid v1.6.0
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/prometheus/client_golang v1.20.5
 	github.com/stretchr/testify v1.10.0
+	github.com/wafer-bw/go-toolbox/always v1.2.2
 	github.com/wafer-bw/go-toolbox/graceful v0.2.4
 	go.uber.org/mock v0.5.0
 	google.golang.org/grpc v1.70.0

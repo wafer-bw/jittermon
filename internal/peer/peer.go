@@ -149,7 +149,3 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 
 	return nil
 }
-
-func (p *Peer) DoTrace(ctx context.Context) {
-	return
-}

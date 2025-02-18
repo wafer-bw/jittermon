@@ -11,10 +11,12 @@ import (
 func TestChain(t *testing.T) {
 	t.Parallel()
 
+	type ctxKey string
+
 	t.Run("returns a Recorder that calls each Recorder in the chain", func(t *testing.T) {
 		t.Parallel()
 
-		key := "foo"
+		key := ctxKey("foo")
 		ctx := t.Context()
 		b1, b2 := new(bool), new(bool)
 		ctx = context.WithValue(ctx, key, 0)

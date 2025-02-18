@@ -37,7 +37,11 @@ func main() {
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 
 	if conf.MetricsAddr != "" {
-		prometheus := recorder.NewPrometheus(conf.MetricsAddr, log)
+		prometheus, err := recorder.NewPrometheus(conf.MetricsAddr, recorder.PrometheusWithLogger(log))
+		if err != nil {
+			log.Error(err.Error())
+			os.Exit(1)
+		}
 		group = append(group, prometheus)
 		recorders = append(recorders, prometheus.DefaultRecorders()...)
 	}

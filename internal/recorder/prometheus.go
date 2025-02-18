@@ -19,6 +19,15 @@ const (
 	idleTimeout  time.Duration = 5 * time.Second // TODO: make controllable.
 )
 
+type PrometheusOption func(*Prometheus) error
+
+func PrometheusWithLogger(log *slog.Logger) PrometheusOption {
+	return func(p *Prometheus) error {
+		p.log = log
+		return nil
+	}
+}
+
 type Prometheus struct {
 	log        *slog.Logger
 	mu         *sync.Mutex
@@ -30,16 +39,35 @@ type Prometheus struct {
 
 // NewPrometheus returns a new [Prometheus] which must be started and stopped
 // using [Prometheus.Start] and [Prometheus.Stop] respectively.
-func NewPrometheus(addr string, log *slog.Logger) *Prometheus {
-	return &Prometheus{
+func NewPrometheus(addr string, options ...PrometheusOption) (*Prometheus, error) {
+	r := &Prometheus{
 		mu:   &sync.Mutex{},
 		addr: addr,
-		log:  log,
+		log:  slog.New(slog.DiscardHandler),
 	}
+
+	for _, option := range options {
+		if option == nil {
+			continue
+		}
+		if err := option(r); err != nil {
+			return nil, err
+		}
+	}
+
+	r.server = &http.Server{
+		Addr:         r.addr,
+		Handler:      promhttp.Handler(),
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
+	}
+
+	return r, nil
 }
 
 // DefaultRecorders returns the default, recommended recorders.
-func (r Prometheus) DefaultRecorders() []ChainLink {
+func (r *Prometheus) DefaultRecorders() []ChainLink {
 	return []ChainLink{
 		r.RecordDuration,
 		r.RecordIncrement,
@@ -118,17 +146,8 @@ func (r *Prometheus) RecordIncrement(next Recorder) Recorder {
 
 // Start the prometheus metrics endpoint server.
 func (r *Prometheus) Start(ctx context.Context) error {
-	s := &http.Server{
-		Addr:         r.addr,
-		Handler:      promhttp.Handler(),
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
-	}
-	r.server = s
-
 	r.log.Info("starting prometheus server", "addr", r.addr)
-	return s.ListenAndServe()
+	return r.server.ListenAndServe()
 }
 
 // Stop the prometheus metrics endpoint server.

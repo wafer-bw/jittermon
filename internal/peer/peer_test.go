@@ -29,10 +29,10 @@ func TestNew(t *testing.T) {
 		require.NotNil(t, p)
 	})
 
-	t.Run("constructs a new peer when provided with nil options", func(t *testing.T) {
+	t.Run("constructs without panic when provided nil options", func(t *testing.T) {
 		t.Parallel()
 
-		p, err := peer.NewPeer(peer.WithID("abc"), nil, nil)
+		p, err := peer.NewPeer(nil, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, p)
 	})
@@ -159,7 +159,7 @@ func TestPoll(t *testing.T) {
 		require.NotNil(t, res)
 		require.Nil(t, res.GetJitter())
 
-		time.Sleep(25 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 
 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, s recorder.Sample) {
 			require.Equal(t, recorder.SampleTypeDownstreamJitter, s.Type)
