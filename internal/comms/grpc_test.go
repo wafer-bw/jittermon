@@ -125,7 +125,9 @@ func TestClient_StartStop(t *testing.T) {
 		}()
 
 		require.Eventually(t, func() bool {
-			return c.GetPoller().(*doPoller).GetCalled()
+			p, ok := c.GetPoller().(*doPoller)
+			require.True(t, ok)
+			return p.GetCalled()
 		}, 1*time.Second, 25*time.Millisecond)
 
 		err = c.Stop(ctx)
@@ -147,8 +149,10 @@ func TestClient_StartStop(t *testing.T) {
 		}()
 
 		require.Eventually(t, func() bool {
+			p, ok := c.GetPoller().(*doPoller)
+			require.True(t, ok)
 			cancel()
-			return c.GetPoller().(*doPoller).GetCalled()
+			return p.GetCalled()
 		}, 1*time.Second, 25*time.Millisecond)
 
 		err = c.Stop(ctx)
