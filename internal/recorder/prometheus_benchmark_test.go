@@ -19,7 +19,7 @@ func BenchmarkPrometheus_RecordDuration(b *testing.B) {
 	ctx := b.Context()
 	sample := recorder.Sample{Type: "abc", Src: "a", Dst: "b", Val: 1 * time.Second}
 
-	p, err := recorder.NewPrometheus(":8080")
+	p, err := recorder.NewPrometheus(":8080", nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func BenchmarkPrometheus_RecordIncrement(b *testing.B) {
 	ctx := b.Context()
 	sample := recorder.Sample{Type: "abc", Src: "a", Dst: "b", Val: struct{}{}}
 
-	p, err := recorder.NewPrometheus(":8080")
+	p, err := recorder.NewPrometheus(":8080", nil)
 	if err != nil {
 		b.Fatal(err)
 	}

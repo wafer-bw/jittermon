@@ -2,8 +2,6 @@ package recorder_test
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	"strconv"
@@ -22,50 +20,9 @@ func TestNewPrometheus(t *testing.T) {
 	t.Run("returns a new prometheus", func(t *testing.T) {
 		t.Parallel()
 
-		p, err := recorder.NewPrometheus(":8080")
+		p, err := recorder.NewPrometheus(":8080", nil)
 		require.NoError(t, err)
 		require.NotNil(t, p)
-	})
-
-	t.Run("constructs without panic when provided nil options", func(t *testing.T) {
-		t.Parallel()
-
-		p, err := recorder.NewPrometheus(":8080", nil, nil)
-		require.NoError(t, err)
-		require.NotNil(t, p)
-	})
-
-	t.Run("executes option funcs", func(t *testing.T) {
-		t.Parallel()
-
-		executed := new(bool)
-		_, err := recorder.NewPrometheus(":8080", func(_ *recorder.Prometheus) error {
-			*executed = true
-			return nil
-		})
-		require.NoError(t, err)
-		require.True(t, *executed)
-	})
-
-	t.Run("returns error returned by option func", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := recorder.NewPrometheus(":8080", func(_ *recorder.Prometheus) error { return fmt.Errorf("error") })
-		require.Error(t, err)
-	})
-
-	t.Run("with logger option sets logger", func(t *testing.T) {
-		t.Parallel()
-
-		logger := new(slog.Logger)
-
-		p, err := recorder.NewPrometheus(":8080")
-		require.NoError(t, err)
-		require.NotEqual(t, logger, p.GetLogger())
-
-		p, err = recorder.NewPrometheus(":8080", recorder.PrometheusWithLogger(logger))
-		require.NoError(t, err)
-		require.Equal(t, logger, p.GetLogger())
 	})
 }
 
@@ -75,7 +32,7 @@ func TestPrometheus_DefaultRecorders(t *testing.T) {
 	t.Run("returns intended amount of default recorders", func(t *testing.T) {
 		t.Parallel()
 
-		p, err := recorder.NewPrometheus(":8080")
+		p, err := recorder.NewPrometheus(":8080", nil)
 		require.NoError(t, err)
 
 		recorders := p.DefaultRecorders()
@@ -91,7 +48,7 @@ func TestPrometheus_Start(t *testing.T) {
 
 		ctx := t.Context()
 		addr := net.JoinHostPort("", strconv.Itoa(always.Accept(freeport.GetFreePort())))
-		p, err := recorder.NewPrometheus(addr)
+		p, err := recorder.NewPrometheus(addr, nil)
 		require.NoError(t, err)
 
 		go func() {
@@ -104,7 +61,7 @@ func TestPrometheus_Start(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		p, err := recorder.NewPrometheus("-1")
+		p, err := recorder.NewPrometheus("-1", nil)
 		require.NoError(t, err)
 
 		err = p.Start(ctx)
@@ -120,7 +77,7 @@ func TestPrometheus_Stop(t *testing.T) {
 
 		ctx := t.Context()
 		addr := net.JoinHostPort("", strconv.Itoa(always.Accept(freeport.GetFreePort())))
-		p, err := recorder.NewPrometheus(addr)
+		p, err := recorder.NewPrometheus(addr, nil)
 		require.NoError(t, err)
 
 		go func() {
@@ -155,7 +112,7 @@ func TestPrometheus_RecordDuration(t *testing.T) {
 			{Type: "def", Src: src, Dst: dst, Val: 1 * time.Second},
 		}
 
-		p, err := recorder.NewPrometheus(":8080")
+		p, err := recorder.NewPrometheus(":8080", nil)
 		require.NoError(t, err)
 
 		noop := recorder.RecorderFunc(func(context.Context, recorder.Sample) {})
@@ -175,7 +132,7 @@ func TestPrometheus_RecordDuration(t *testing.T) {
 			{Type: "def", Src: src, Dst: dst, Val: struct{}{}},
 		}
 
-		p, err := recorder.NewPrometheus(":8080")
+		p, err := recorder.NewPrometheus(":8080", nil)
 		require.NoError(t, err)
 
 		noop := recorder.RecorderFunc(func(context.Context, recorder.Sample) {})
@@ -199,7 +156,7 @@ func TestPrometheus_RecordIncrement(t *testing.T) {
 			{Type: "def", Src: src, Dst: dst, Val: struct{}{}},
 		}
 
-		p, err := recorder.NewPrometheus(":8080")
+		p, err := recorder.NewPrometheus(":8080", nil)
 		require.NoError(t, err)
 
 		noop := recorder.RecorderFunc(func(context.Context, recorder.Sample) {})
@@ -219,7 +176,7 @@ func TestPrometheus_RecordIncrement(t *testing.T) {
 			{Type: "def", Src: src, Dst: dst, Val: 1 * time.Second},
 		}
 
-		p, err := recorder.NewPrometheus(":8080")
+		p, err := recorder.NewPrometheus(":8080", nil)
 		require.NoError(t, err)
 
 		noop := recorder.RecorderFunc(func(context.Context, recorder.Sample) {})
