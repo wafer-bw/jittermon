@@ -58,21 +58,22 @@ func main() {
 
 	if len(conf.SendAddrs) != 0 {
 		for _, addr := range conf.SendAddrs {
-			group = append(group, &comms.Client{
-				Addr:     addr,
-				Poller:   p,
-				Interval: conf.Interval,
-				Log:      log,
-			})
+			c, err := comms.NewClient(addr, p, conf.Interval, log)
+			if err != nil {
+				log.Error(err.Error())
+				os.Exit(1)
+			}
+			group = append(group, c)
 		}
 	}
 
 	if conf.ListenAddr != "" {
-		group = append(group, &comms.Server{
-			Addr:    conf.ListenAddr,
-			Handler: p,
-			Log:     log,
-		})
+		s, err := comms.NewServer(conf.ListenAddr, p, log)
+		if err != nil {
+			log.Error(err.Error())
+			os.Exit(1)
+		}
+		group = append(group, s)
 	}
 
 	if err := group.Run(ctx, shutdownTimeout, exitSignals...); err != nil {

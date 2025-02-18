@@ -21,39 +21,51 @@ const (
 )
 
 type Server struct {
-	Addr    string
-	Handler pollpb.PollServiceServer
-	Log     *slog.Logger
-
-	server *grpc.Server
+	addr    string
+	handler pollpb.PollServiceServer
+	log     *slog.Logger
+	server  *grpc.Server
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	server := grpc.NewServer(
+func NewServer(addr string, handler pollpb.PollServiceServer, log *slog.Logger) (*Server, error) {
+	s := &Server{
+		addr:    addr,
+		handler: handler,
+		log:     log,
+	}
+
+	if log == nil {
+		s.log = slog.New(slog.DiscardHandler)
+	}
+
+	s.server = grpc.NewServer(
 		grpc.KeepaliveParams(keepalive.ServerParameters{
 			MaxConnectionAge:      maxConnectionAge,
 			MaxConnectionAgeGrace: maxConnectionAgeGrace,
 			MaxConnectionIdle:     maxConnectionIdle,
 		}),
 	)
-	s.server = server
 
-	pollpb.RegisterPollServiceServer(server, s.Handler)
-	reflection.Register(server)
+	return s, nil
+}
 
-	listener, err := net.Listen("tcp", s.Addr)
+func (s *Server) Start(ctx context.Context) error {
+	pollpb.RegisterPollServiceServer(s.server, s.handler)
+	reflection.Register(s.server)
+
+	listener, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return err
 	}
 	defer listener.Close()
 
-	s.Log.Info("starting gRPC server", "addr", listener.Addr())
+	s.log.Info("starting gRPC server", "addr", listener.Addr())
 
 	return s.server.Serve(listener)
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	s.Log.Info("stopping server", "addr", s.Addr)
+	s.log.Info("stopping server", "addr", s.addr)
 
 	ok := make(chan struct{})
 	go func() {
@@ -75,23 +87,36 @@ type DoPoller interface {
 }
 
 type Client struct {
-	Addr     string
-	Poller   DoPoller
-	Interval time.Duration
-	Log      *slog.Logger
+	addr     string
+	poller   DoPoller
+	interval time.Duration
+	log      *slog.Logger
+	doneCh   chan struct{}
+	stopCh   chan struct{}
+}
 
-	doneCh chan struct{}
-	stopCh chan struct{}
+func NewClient(addr string, poller DoPoller, interval time.Duration, log *slog.Logger) (*Client, error) {
+	c := &Client{
+		addr:     addr,
+		poller:   poller,
+		interval: interval,
+		log:      log,
+		stopCh:   make(chan struct{}),
+		doneCh:   make(chan struct{}),
+	}
+
+	if log == nil {
+		c.log = slog.New(slog.DiscardHandler)
+	}
+
+	return c, nil
 }
 
 func (c *Client) Start(ctx context.Context) error {
-	c.Log.Info("starting client", "addr", c.Addr)
-
-	c.stopCh = make(chan struct{})
-	c.doneCh = make(chan struct{})
 	defer close(c.doneCh)
+	c.log.Info("starting client", "addr", c.addr)
 
-	conn, err := grpc.NewClient(c.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(c.addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}
@@ -99,14 +124,14 @@ func (c *Client) Start(ctx context.Context) error {
 
 	client := pollpb.NewPollServiceClient(conn)
 
-	t := time.NewTicker(c.Interval)
+	t := time.NewTicker(c.interval)
 	defer t.Stop()
 
 	for {
 		select {
 		case <-t.C:
-			pollCtx, cancel := context.WithTimeout(ctx, c.Interval)
-			_ = c.Poller.DoPoll(pollCtx, client, c.Addr)
+			pollCtx, cancel := context.WithTimeout(ctx, c.interval)
+			_ = c.poller.DoPoll(pollCtx, client, c.addr)
 			cancel()
 		case <-c.stopCh:
 			return nil
@@ -117,7 +142,7 @@ func (c *Client) Start(ctx context.Context) error {
 }
 
 func (c *Client) Stop(ctx context.Context) error {
-	c.Log.Debug("stopping client", "addr", c.Addr)
+	c.log.Debug("stopping client", "addr", c.addr)
 
 	close(c.stopCh)
 

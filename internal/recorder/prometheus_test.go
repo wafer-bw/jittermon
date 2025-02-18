@@ -40,39 +40,10 @@ func TestPrometheus_DefaultRecorders(t *testing.T) {
 	})
 }
 
-func TestPrometheus_Start(t *testing.T) {
+func TestPrometheus_StartStop(t *testing.T) {
 	t.Parallel()
 
-	t.Run("starts the server", func(t *testing.T) {
-		t.Parallel()
-
-		ctx := t.Context()
-		addr := net.JoinHostPort("", strconv.Itoa(always.Accept(freeport.GetFreePort())))
-		p, err := recorder.NewPrometheus(addr, nil)
-		require.NoError(t, err)
-
-		go func() {
-			err = p.Start(ctx)
-			require.NoError(t, err)
-		}()
-	})
-
-	t.Run("returns error if unable to start server", func(t *testing.T) {
-		t.Parallel()
-
-		ctx := t.Context()
-		p, err := recorder.NewPrometheus("-1", nil)
-		require.NoError(t, err)
-
-		err = p.Start(ctx)
-		require.Error(t, err)
-	})
-}
-
-func TestPrometheus_Stop(t *testing.T) {
-	t.Parallel()
-
-	t.Run("stops the server", func(t *testing.T) {
+	t.Run("starts & stops the server", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
@@ -96,6 +67,17 @@ func TestPrometheus_Stop(t *testing.T) {
 
 		err = p.Stop(ctx)
 		require.NoError(t, err)
+	})
+
+	t.Run("returns error if unable to start server", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		p, err := recorder.NewPrometheus("-1", nil)
+		require.NoError(t, err)
+
+		err = p.Start(ctx)
+		require.Error(t, err)
 	})
 }
 
