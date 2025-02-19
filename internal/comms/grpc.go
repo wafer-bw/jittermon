@@ -14,11 +14,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-const (
-	maxConnectionAge      time.Duration = 10 * time.Second
-	maxConnectionIdle     time.Duration = 2 * time.Second
-	maxConnectionAgeGrace time.Duration = 2 * time.Second
-)
+const maxConnectionIdle time.Duration = 5 * time.Minute
 
 type Server struct {
 	addr    string
@@ -39,11 +35,7 @@ func NewServer(addr string, handler pollpb.PollServiceServer, log *slog.Logger) 
 	}
 
 	s.server = grpc.NewServer(
-		grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionAge:      maxConnectionAge,
-			MaxConnectionAgeGrace: maxConnectionAgeGrace,
-			MaxConnectionIdle:     maxConnectionIdle,
-		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: maxConnectionIdle}),
 	)
 
 	return s, nil

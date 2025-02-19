@@ -155,14 +155,18 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 func (p *Peer) DoTrace(ctx context.Context, dstAddr string) error {
 	now := time.Now()
 	t := traceroute.Tracer{MaxHops: 12, Timeout: 1 * time.Second}
-	hops, err := t.Trace("8.8.8.8")
+	hops, err := t.Trace(dstAddr)
 	if err != nil {
 		p.log.Error("traceroute failed", "err", err)
 		return err
 	}
 
 	for _, hop := range hops {
-		labels := map[string]string{"hop": strconv.Itoa(hop.Hop)} // TODO: consider adding hop address.
+		labels := []recorder.Label{
+			{K: "hop", V: strconv.Itoa(hop.Hop)},
+			{K: "addr", V: hop.Addr},
+			{K: "hostname", V: hop.Name},
+		}
 		p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeHopRTT, Src: p.id, Dst: dstAddr, Val: hop.RTT, Labels: labels})
 	}
 

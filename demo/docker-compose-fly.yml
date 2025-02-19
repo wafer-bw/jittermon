@@ -10,7 +10,7 @@ services:
     environment:
       - JITTERMON_PEER_ID=localhost
       - JITTERMON_LOG_LEVEL=INFO
-      - JITTERMON_INTERVAL=1s
+      - JITTERMON_INTERVAL=0.25s
       - JITTERMON_LISTEN_ADDR=:8081
       - JITTERMON_METRICS_ADDR=:8082
     env_file:

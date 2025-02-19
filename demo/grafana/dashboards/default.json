@@ -206,8 +206,7 @@
           "placement": "right",
           "showLegend": true,
           "sortBy": "Mean",
-          "sortDesc": true,
-          "width": 325
+          "sortDesc": true
         },
         "tooltip": {
           "hideZeros": true,
@@ -344,7 +343,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
+        "h": 14,
         "w": 24,
         "x": 0,
         "y": 16
@@ -360,8 +359,7 @@
           "placement": "right",
           "showLegend": true,
           "sortBy": "Name",
-          "sortDesc": true,
-          "width": 325
+          "sortDesc": true
         },
         "tooltip": {
           "hideZeros": true,
@@ -373,8 +371,9 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(rate(jittermon_hop_rtt_duration_seconds_sum{}[$__rate_interval])) by (hop) / sum(rate(jittermon_hop_rtt_duration_seconds_count{}[$__rate_interval])) by (hop) > 0",
-          "legendFormat": "__auto",
+          "expr": "sum(rate(jittermon_hop_rtt_duration_seconds_sum{job=\"jittermon\", hop=~\"[4-9]\"}[$__rate_interval])) by (hop, addr, hostname) / sum(rate(jittermon_hop_rtt_duration_seconds_count{job=\"jittermon\", hop=~\"[4-9]\"}[$__rate_interval])) by (hop, addr, hostname) > 0",
+          "format": "time_series",
+          "legendFormat": "{{hop}} ({{hostname}})",
           "range": true,
           "refId": "A"
         }
@@ -507,7 +506,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 28
+        "y": 30
       },
       "id": 3,
       "options": {
@@ -554,7 +553,7 @@
         "h": 7,
         "w": 18,
         "x": 6,
-        "y": 28
+        "y": 30
       },
       "id": 2,
       "options": {

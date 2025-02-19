@@ -85,14 +85,17 @@ func (r *Prometheus) RecordDuration(next Recorder) Recorder {
 			val = *valP
 		}
 
-		labelKeys := []string{"src", "dst"} // TODO: change to local/remote?
-		for k := range s.Labels {
-			labelKeys = append(labelKeys, k)
+		labels := []Label{
+			{K: "src", V: s.Src}, // TODO: change to local?
+			{K: "dst", V: s.Dst}, // TODO: change to remote?
 		}
+		labels = append(labels, s.Labels...)
 
-		labelVals := []string{s.Src, s.Dst}
-		for _, k := range labelKeys[2:] {
-			labelVals = append(labelVals, s.Labels[k])
+		labelKeys := make([]string, len(labels))
+		labelVals := make([]string, len(labels))
+		for i, label := range labels { // TODO: receiver function.
+			labelKeys[i] = label.K
+			labelVals[i] = label.V
 		}
 
 		histogram, ok := r.histograms[key]

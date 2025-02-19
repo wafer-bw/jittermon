@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+type Label struct {
+	K string
+	V string
+}
+
 // TODO: docstring.
 type SampleType string
 
@@ -24,7 +29,7 @@ type Sample struct {
 	Src    string // source address/id/name.
 	Dst    string // destination address/id/name.
 	Val    any    // value to record if there is one.
-	Labels map[string]string
+	Labels []Label
 }
 
 // ChainLink is a function that accepts and returns a [Recorder]. The returned
