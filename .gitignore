@@ -30,3 +30,6 @@ go.work.sum
 
 # Include tracked grafana dashboards
 !demo/grafana/**/*.json
+
+# Scratch files
+cmd/scratch*/main.go

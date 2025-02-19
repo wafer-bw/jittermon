@@ -29,6 +29,14 @@ func (d *doPoller) DoPoll(ctx context.Context, client pollpb.PollServiceClient, 
 	return nil
 }
 
+func (d *doPoller) DoTrace(ctx context.Context, addr string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	d.called = true
+	return nil
+}
+
 func (d *doPoller) GetCalled() bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()

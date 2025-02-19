@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/wafer-bw/jittermon/internal/pb/pollpb"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 	rec "github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/traceroute"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -142,10 +144,27 @@ func (p *Peer) DoPoll(ctx context.Context, client pollpb.PollServiceClient, dstA
 		p.log.Warn("no jitter in response")
 		return fmt.Errorf("no jitter in response")
 	}
-	jitter := jitterPb.AsDuration()
+	jit := jitterPb.AsDuration()
 
-	p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeUpstreamJitter, Src: p.id, Dst: dstID, Val: jitter})
+	p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeUpstreamJitter, Src: p.id, Dst: dstID, Val: jit})
 	p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeRTT, Src: p.id, Dst: dstID, Val: rtt})
+
+	return nil
+}
+
+func (p *Peer) DoTrace(ctx context.Context, dstAddr string) error {
+	now := time.Now()
+	t := traceroute.Tracer{MaxHops: 12, Timeout: 1 * time.Second}
+	hops, err := t.Trace("8.8.8.8")
+	if err != nil {
+		p.log.Error("traceroute failed", "err", err)
+		return err
+	}
+
+	for _, hop := range hops {
+		labels := map[string]string{"hop": strconv.Itoa(hop.Hop)} // TODO: consider adding hop address.
+		p.r.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeHopRTT, Src: p.id, Dst: dstAddr, Val: hop.RTT, Labels: labels})
+	}
 
 	return nil
 }

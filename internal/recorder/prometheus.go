@@ -75,7 +75,24 @@ func (r *Prometheus) RecordDuration(next Recorder) Recorder {
 		key := string(s.Type)
 		val, ok := s.Val.(time.Duration)
 		if !ok {
-			return
+			valP, ok := s.Val.(*time.Duration)
+			if !ok {
+				return
+			}
+			if valP == nil {
+				valP = new(time.Duration)
+			}
+			val = *valP
+		}
+
+		labelKeys := []string{"src", "dst"} // TODO: change to local/remote?
+		for k := range s.Labels {
+			labelKeys = append(labelKeys, k)
+		}
+
+		labelVals := []string{s.Src, s.Dst}
+		for _, k := range labelKeys[2:] {
+			labelVals = append(labelVals, s.Labels[k])
 		}
 
 		histogram, ok := r.histograms[key]
@@ -85,14 +102,14 @@ func (r *Prometheus) RecordDuration(next Recorder) Recorder {
 				Name:      fmt.Sprintf("%s_duration_seconds", key),
 				Help:      fmt.Sprintf("A histogram of '%s' durations in seconds", key),
 				Buckets:   []float64{0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1},
-			}, []string{"src", "dst"}) // TODO: change to local/remote?
+			}, labelKeys)
 			if err := prometheus.Register(histogram); err != nil {
 				r.log.Error("could not register histogram", "key", key, "err", err)
 			}
 			r.histograms[key] = histogram
 		}
 
-		histogram.WithLabelValues(s.Src, s.Dst).Observe(val.Seconds())
+		histogram.WithLabelValues(labelVals...).Observe(val.Seconds())
 	})
 }
 

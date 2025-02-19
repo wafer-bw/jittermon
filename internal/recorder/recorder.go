@@ -13,16 +13,18 @@ const (
 	SampleTypeUpstreamJitter   SampleType = "upstream_jitter"
 	SampleTypeSentPackets      SampleType = "sent_packets"
 	SampleTypeLostPackets      SampleType = "lost_packets"
-	SampleTypeRTT              SampleType = "rtt" // round trip time (ping).
+	SampleTypeRTT              SampleType = "rtt"     // round trip time (ping).
+	SampleTypeHopRTT           SampleType = "hop_rtt" // traceroute hop rtt.
 )
 
 // Sample is the data structure that is recorded by a [Recorder].
 type Sample struct {
-	Time time.Time
-	Type SampleType
-	Src  string // source address/id/name.
-	Dst  string // destination address/id/name.
-	Val  any    // value to record if there is one.
+	Time   time.Time
+	Type   SampleType
+	Src    string // source address/id/name.
+	Dst    string // destination address/id/name.
+	Val    any    // value to record if there is one.
+	Labels map[string]string
 }
 
 // ChainLink is a function that accepts and returns a [Recorder]. The returned

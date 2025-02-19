@@ -190,7 +190,7 @@
         ]
       },
       "gridPos": {
-        "h": 20,
+        "h": 16,
         "w": 24,
         "x": 0,
         "y": 0
@@ -206,7 +206,8 @@
           "placement": "right",
           "showLegend": true,
           "sortBy": "Mean",
-          "sortDesc": true
+          "sortDesc": true,
+          "width": 325
         },
         "tooltip": {
           "hideZeros": true,
@@ -273,6 +274,112 @@
         }
       ],
       "title": "Remote gRPC Peer",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": true,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepBefore",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Name",
+          "sortDesc": true,
+          "width": 325
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(jittermon_hop_rtt_duration_seconds_sum{}[$__rate_interval])) by (hop) / sum(rate(jittermon_hop_rtt_duration_seconds_count{}[$__rate_interval])) by (hop) > 0",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Traceroute",
       "type": "timeseries"
     },
     {
@@ -397,10 +504,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 6,
         "x": 0,
-        "y": 20
+        "y": 28
       },
       "id": 3,
       "options": {
@@ -444,10 +551,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 18,
         "x": 6,
-        "y": 20
+        "y": 28
       },
       "id": 2,
       "options": {
@@ -506,6 +613,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 29,
+  "version": 30,
   "weekStart": ""
 }

@@ -23,7 +23,7 @@ type config struct {
 	MetricsAddr string                `split_words:"true" default:""`
 	Interval    time.Duration         `split_words:"true" default:"1s"`
 	LogLevel    slog.Level            `split_words:"true" default:"INFO"`
-	Metrics     []recorder.SampleType `split_words:"true" default:"rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets"`
+	Metrics     []recorder.SampleType `split_words:"true" default:"rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,hop_rtt"`
 	Write       bool                  `split_words:"true" default:"false"`
 }
 
