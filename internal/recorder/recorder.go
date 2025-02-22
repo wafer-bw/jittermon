@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// NoOp recorder, for use when you don't want anything to be recorded.
+// NoOp recorder for when you don't want samples to be recorded.
 var NoOp RecorderFunc = func(context.Context, Sample) {}
 
 // Labels provides a deterministicly ordered set of key-value pair labels for
