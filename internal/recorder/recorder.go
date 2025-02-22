@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+// NoOp recorder, for use when you don't want anything to be recorded.
+var NoOp RecorderFunc = func(context.Context, Sample) {}
+
+// Labels provides a deterministicly ordered set of key-value pair labels for
+// use with [Sample].
 type Labels []Label
 
 func (ls Labels) Keys() []string {
