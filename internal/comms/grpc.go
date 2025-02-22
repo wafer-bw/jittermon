@@ -125,7 +125,7 @@ func (c *Client) Start(ctx context.Context) error {
 		case <-t.C:
 			pollCtx, cancel := context.WithTimeout(ctx, c.interval)
 			_ = c.poller.DoPoll(pollCtx, client, c.addr)
-			_ = c.poller.DoTrace(pollCtx, c.addr)
+			// _ = c.poller.DoTrace(pollCtx, c.addr)
 			cancel()
 		case <-c.stopCh:
 			return nil

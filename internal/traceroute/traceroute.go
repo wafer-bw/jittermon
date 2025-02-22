@@ -1,3 +1,4 @@
+// TODO: switch to pure go implementation of traceroute.
 package traceroute
 
 import (
@@ -14,7 +15,7 @@ type Hops []Hop
 
 func (hs Hops) String() string {
 	var buf bytes.Buffer
-	w := tabwriter.NewWriter(&buf, 2, 4, 2, ' ', 0)
+	w := tabwriter.NewWriter(&buf, 2, 4, 2, ' ', 0) //nolint:mnd // not reused.
 	for _, h := range hs {
 		fmt.Fprintf(w, "%d\t%s\t%s\t%s\t\n", h.Hop, h.Name, h.Addr, h.RTT)
 	}
@@ -33,28 +34,27 @@ func (h Hop) String() string {
 	return fmt.Sprintf("%d %s %s %s", h.Hop, h.Addr, h.Name, h.RTT)
 }
 
-type Tracer struct {
+type TraceOptions struct {
 	MaxHops int
 	Timeout time.Duration
 }
 
-func (t Tracer) Trace(dst string) (Hops, error) {
-	timeout := strconv.Itoa(int(t.Timeout.Seconds()))
-	maxhops := strconv.Itoa(t.MaxHops)
+func Trace(dst string, opts TraceOptions) (Hops, error) {
+	args := []string{"-q", "1"}
+	if opts.MaxHops > 0 {
+		args = append(args, "-m", strconv.Itoa(opts.MaxHops))
+	}
+	if opts.Timeout > 0 {
+		args = append(args, "-w", strconv.Itoa(int(opts.Timeout.Seconds())))
+	}
+	args = append(args, dst)
 
-	cmd := exec.Command("traceroute",
-		"-w", timeout,
-		"-m", maxhops,
-		"-q", "1",
-		dst,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := exec.Command("traceroute", args...).CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("error running traceroute: %w", err)
 	}
-	output = bytes.TrimSpace(output)
 
+	output = bytes.TrimSpace(output)
 	lines := strings.Split(string(output), "\n")
 	hops := make([]Hop, 0, len(lines)-1)
 	for i, line := range strings.Split(string(output), "\n") {
@@ -74,8 +74,7 @@ func (t Tracer) Trace(dst string) (Hops, error) {
 			continue
 		}
 
-		var hop int
-		var host, ip, rtt string
+		hop, host, ip, rtt := 0, "", "", ""
 		if _, err := fmt.Sscanf(line, "%d %s %s %s", &hop, &host, &ip, &rtt); err != nil {
 			return nil, fmt.Errorf("unable to parse traceroute line %d %q: %w", i, line, err)
 		}

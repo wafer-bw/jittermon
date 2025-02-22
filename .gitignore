@@ -32,4 +32,4 @@ go.work.sum
 !demo/grafana/**/*.json
 
 # Scratch files
-cmd/scratch*/main.go
+cmd/scratch*/**/*.go

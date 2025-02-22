@@ -9,9 +9,8 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/go-toolbox/graceful"
-	"github.com/wafer-bw/jittermon/internal/comms"
-	"github.com/wafer-bw/jittermon/internal/peer"
 	"github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/sampler"
 )
 
 const shutdownTimeout time.Duration = 250 * time.Millisecond
@@ -46,38 +45,58 @@ func main() {
 		recorders = append(recorders, prometheus.DefaultRecorders()...)
 	}
 
-	p, err := peer.NewPeer(
-		peer.WithID(conf.PeerID),
-		peer.WithLogger(log),
-		peer.WithRecorders(recorders...),
-	)
+	chain := recorder.Chain(recorders...)
+
+	// TODO: do we need the defers or can we move init portions into start functions?
+
+	// TODO: configure separately.
+	latencyClientSampler, err := sampler.NewLatencyClient(sampler.LatencyClientOptions{
+		ID:       conf.PeerID,
+		Address:  conf.SendAddrs[0],
+		Interval: conf.Interval,
+		Recorder: chain,
+		Log:      log,
+	})
 	if err != nil {
 		log.Error(err.Error())
-		os.Exit(1)
+		return // TODO: put this in function so we can return proper exit code.
 	}
+	defer latencyClientSampler.Stop(ctx) // TODO: will this panic if it ends up getting called twice?
+	group = append(group, latencyClientSampler)
 
-	if len(conf.SendAddrs) != 0 {
-		for _, addr := range conf.SendAddrs {
-			c, err := comms.NewClient(addr, p, conf.Interval, log)
-			if err != nil {
-				log.Error(err.Error())
-				os.Exit(1)
-			}
-			group = append(group, c)
-		}
+	// TODO: configure separately.
+	latencyServerSampler, err := sampler.NewLatencyServer(sampler.LatencyServerOptions{
+		ID:       conf.PeerID,
+		Address:  conf.ListenAddr,
+		Recorder: chain,
+		Log:      log,
+	})
+	if err != nil {
+		log.Error(err.Error())
+		return // TODO: put this in function so we can return proper exit code.
 	}
+	defer latencyServerSampler.Stop(ctx) // TODO: will this panic if it ends up getting called twice?
+	group = append(group, latencyServerSampler)
 
-	if conf.ListenAddr != "" {
-		s, err := comms.NewServer(conf.ListenAddr, p, log)
-		if err != nil {
-			log.Error(err.Error())
-			os.Exit(1)
-		}
-		group = append(group, s)
+	// TODO: configure separately.
+	traceRouteSampler, err := sampler.NewTraceRoute(sampler.TraceRouteOptions{
+		ID:       conf.PeerID,
+		Address:  conf.SendAddrs[0],
+		MaxHops:  12,              // TODO: configure.
+		Timeout:  5 * time.Second, // TODO: configure.
+		Interval: conf.Interval,   // TODO configure separately.
+		Recorder: chain,
+		Log:      log,
+	})
+	if err != nil {
+		log.Error(err.Error())
+		return // TODO: put this in function so we can return proper exit code.
 	}
+	defer traceRouteSampler.Stop(ctx) // TODO: will this panic if it ends up getting called twice?
+	group = append(group, traceRouteSampler)
 
 	if err := group.Run(ctx, shutdownTimeout, exitSignals...); err != nil {
 		log.Error(err.Error())
-		os.Exit(1)
+		return // TODO: put this in function so we can return proper exit code.
 	}
 }

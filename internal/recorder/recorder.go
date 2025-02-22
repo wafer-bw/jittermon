@@ -5,6 +5,24 @@ import (
 	"time"
 )
 
+type Labels []Label
+
+func (ls Labels) Keys() []string {
+	keys := make([]string, len(ls))
+	for i, l := range ls {
+		keys[i] = l.K
+	}
+	return keys
+}
+
+func (ls Labels) Values() []string {
+	values := make([]string, len(ls))
+	for i, l := range ls {
+		values[i] = l.V
+	}
+	return values
+}
+
 type Label struct {
 	K string
 	V string
@@ -25,11 +43,9 @@ const (
 // Sample is the data structure that is recorded by a [Recorder].
 type Sample struct {
 	Time   time.Time
-	Type   SampleType
-	Src    string // source address/id/name.
-	Dst    string // destination address/id/name.
-	Val    any    // value to record if there is one.
-	Labels []Label
+	Type   SampleType // TODO: rename to Key and likely just make it a string.
+	Val    any        // value to record if there is one.
+	Labels Labels
 }
 
 // ChainLink is a function that accepts and returns a [Recorder]. The returned
@@ -54,6 +70,7 @@ func (f RecorderFunc) Record(ctx context.Context, s Sample) {
 
 // Chain [ChainLink]s together to create a single [Recorder].
 func Chain(recorders ...ChainLink) Recorder {
+	// TODO: consider making receiver of type []ChainLink.
 	terminal := RecorderFunc(func(ctx context.Context, s Sample) { return })
 	if len(recorders) == 0 {
 		return terminal

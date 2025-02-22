@@ -85,19 +85,6 @@ func (r *Prometheus) RecordDuration(next Recorder) Recorder {
 			val = *valP
 		}
 
-		labels := []Label{
-			{K: "src", V: s.Src}, // TODO: change to local?
-			{K: "dst", V: s.Dst}, // TODO: change to remote?
-		}
-		labels = append(labels, s.Labels...)
-
-		labelKeys := make([]string, len(labels))
-		labelVals := make([]string, len(labels))
-		for i, label := range labels { // TODO: receiver function.
-			labelKeys[i] = label.K
-			labelVals[i] = label.V
-		}
-
 		histogram, ok := r.histograms[key]
 		if !ok {
 			histogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -105,14 +92,14 @@ func (r *Prometheus) RecordDuration(next Recorder) Recorder {
 				Name:      fmt.Sprintf("%s_duration_seconds", key),
 				Help:      fmt.Sprintf("A histogram of '%s' durations in seconds", key),
 				Buckets:   []float64{0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1},
-			}, labelKeys)
+			}, s.Labels.Keys())
 			if err := prometheus.Register(histogram); err != nil {
 				r.log.Error("could not register histogram", "key", key, "err", err)
 			}
 			r.histograms[key] = histogram
 		}
 
-		histogram.WithLabelValues(labelVals...).Observe(val.Seconds())
+		histogram.WithLabelValues(s.Labels.Values()...).Observe(val.Seconds())
 	})
 }
 
@@ -139,14 +126,14 @@ func (r *Prometheus) RecordIncrement(next Recorder) Recorder {
 				Namespace: namespace,
 				Name:      fmt.Sprintf("%s_total", key),
 				Help:      fmt.Sprintf("Total number of '%s' observations", key),
-			}, []string{"src", "dst"}) // TODO: change to local/remote?
+			}, s.Labels.Keys())
 			if err := prometheus.Register(counter); err != nil {
 				r.log.Error("could not register counter", "key", key, "err", err)
 			}
 			r.counters[key] = counter
 		}
 
-		counter.WithLabelValues(s.Src, s.Dst).Inc()
+		counter.WithLabelValues(s.Labels.Values()...).Inc()
 	})
 }
 
