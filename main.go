@@ -83,7 +83,7 @@ func main() {
 		ID:       conf.PeerID,
 		Address:  conf.SendAddrs[0],
 		MaxHops:  12,                // TODO: configure.
-		Timeout:  5 * time.Second,   // TODO: configure.
+		Timeout:  conf.Interval * 4, // TODO: configure.
 		Interval: conf.Interval * 4, // TODO configure separately.
 		Recorder: chain,
 		Log:      log,
