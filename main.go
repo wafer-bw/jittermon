@@ -82,9 +82,9 @@ func main() {
 	traceRouteSampler, err := sampler.NewTraceRoute(sampler.TraceRouteOptions{
 		ID:       conf.PeerID,
 		Address:  conf.SendAddrs[0],
-		MaxHops:  12,              // TODO: configure.
-		Timeout:  5 * time.Second, // TODO: configure.
-		Interval: conf.Interval,   // TODO configure separately.
+		MaxHops:  12,                // TODO: configure.
+		Timeout:  5 * time.Second,   // TODO: configure.
+		Interval: conf.Interval * 4, // TODO configure separately.
 		Recorder: chain,
 		Log:      log,
 	})
