@@ -18,9 +18,13 @@ var none struct{} = struct{}{}
 type LatencyClient struct {
 	id       string
 	addr     string
+	interval time.Duration
 	ticker   *time.Ticker
 	recorder rec.Recorder
+	client   pollpb.PollServiceClient
 	log      *slog.Logger
+	stopCh   chan struct{}
+	doneCh   chan struct{}
 }
 
 type LatencyClientOptions struct {
@@ -31,17 +35,19 @@ type LatencyClientOptions struct {
 	Log      *slog.Logger
 }
 
-func NewLatencyClient(opts LatencyClientOptions) (LatencyClient, error) {
+func NewLatencyClient(opts LatencyClientOptions) (*LatencyClient, error) {
 	if opts.Interval == 0 {
-		return LatencyClient{}, fmt.Errorf("sampler.NewLatencyClient: interval is required")
+		return nil, fmt.Errorf("sampler.NewLatencyClient: interval is required")
 	}
 
-	lc := LatencyClient{
+	lc := &LatencyClient{
 		id:       opts.ID,
 		addr:     opts.Address,
+		interval: opts.Interval,
 		recorder: opts.Recorder,
-		ticker:   time.NewTicker(opts.Interval), // TODO: this likely needs to be made in Start.
 		log:      slog.New(slog.DiscardHandler),
+		stopCh:   make(chan struct{}),
+		doneCh:   make(chan struct{}),
 	}
 
 	if opts.Log != nil {
@@ -51,7 +57,8 @@ func NewLatencyClient(opts LatencyClientOptions) (LatencyClient, error) {
 	return lc, nil
 }
 
-func (lc LatencyClient) Start(ctx context.Context) error {
+func (lc *LatencyClient) Start(ctx context.Context) error {
+	defer close(lc.doneCh)
 	lc.log.Info("starting client", "addr", lc.addr)
 
 	conn, err := grpc.NewClient(lc.addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -59,28 +66,42 @@ func (lc LatencyClient) Start(ctx context.Context) error {
 		return err
 	}
 	defer conn.Close()
-	defer lc.ticker.Stop()
 
-	client := pollpb.NewPollServiceClient(conn)
+	if lc.client == nil {
+		lc.client = pollpb.NewPollServiceClient(conn)
+	}
+
+	lc.ticker = time.NewTicker(lc.interval)
+	defer lc.ticker.Stop()
 
 	for {
 		select {
 		case <-lc.ticker.C:
-			if err := lc.sample(ctx, client); err != nil {
+			if err := lc.sample(ctx); err != nil {
 				return err
 			}
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-lc.stopCh:
+			return nil
 		}
 	}
 }
 
-func (lc LatencyClient) Stop(ctx context.Context) error {
-	lc.ticker.Stop()
+func (lc *LatencyClient) Stop(ctx context.Context) error {
+	close(lc.stopCh)
+
+	select {
+	case <-lc.doneCh:
+		// fallthrough
+	case <-ctx.Done():
+		return fmt.Errorf("graceful stop failed: %w", ctx.Err())
+	}
+
 	return nil
 }
 
-func (lc LatencyClient) sample(ctx context.Context, client pollpb.PollServiceClient) error {
+func (lc *LatencyClient) sample(ctx context.Context) error {
 	start := time.Now()
 	req := &pollpb.PollRequest{}
 	req.SetId(lc.id)
@@ -88,7 +109,7 @@ func (lc LatencyClient) sample(ctx context.Context, client pollpb.PollServiceCli
 
 	packetLabels := rec.Labels{{K: "src", V: lc.id}, {K: "dst", V: lc.addr}}
 	lc.recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: none, Labels: packetLabels})
-	resp, err := client.Poll(ctx, req)
+	resp, err := lc.client.Poll(ctx, req)
 	if err != nil {
 		lc.recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeLostPackets, Val: none, Labels: packetLabels})
 		lc.log.Error("poll failed", "err", err)
