@@ -1,4 +1,4 @@
-package sampler
+package traceroute
 
 import (
 	"context"

@@ -10,22 +10,23 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/sampler"
+	"github.com/wafer-bw/jittermon/internal/sampler/latency"
+	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
 )
 
 const shutdownTimeout time.Duration = 250 * time.Millisecond
 
 type config struct {
-	PeerID           string                `split_words:"true"`
-	ListenAddr       string                `split_words:"true" default:":8080"`
-	LatencySendAddrs []string              `split_words:"true" default:":8081"`
-	LatencyInterval  time.Duration         `split_words:"true" default:"1s"`
-	TraceSendAddrs   []string              `split_words:"true" default:""`
-	TraceInterval    time.Duration         `split_words:"true" default:"1s"`
-	TraceMaxHops     int                   `split_words:"true" default:"12"`
-	Metrics          []recorder.SampleType `split_words:"true" default:"rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,hop_rtt"`
-	MetricsAddr      string                `split_words:"true" default:""`
-	LogLevel         slog.Level            `split_words:"true" default:"INFO"`
+	PeerID            string                `split_words:"true"`
+	LatencyListenAddr string                `split_words:"true" default:":8080"`
+	LatencySendAddrs  []string              `split_words:"true" default:":8081"`
+	LatencyInterval   time.Duration         `split_words:"true" default:"1s"`
+	TraceSendAddrs    []string              `split_words:"true" default:""`
+	TraceInterval     time.Duration         `split_words:"true" default:"1s"`
+	TraceMaxHops      int                   `split_words:"true" default:"12"`
+	Metrics           []recorder.SampleType `split_words:"true" default:"rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,hop_rtt"`
+	MetricsAddr       string                `split_words:"true" default:""`
+	LogLevel          slog.Level            `split_words:"true" default:"INFO"`
 }
 
 func main() {
@@ -58,26 +59,26 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	chain := recorder.Chain(recorders...)
 
 	for _, addr := range conf.LatencySendAddrs {
-		latencyClientSampler, err := sampler.NewLatencyClient(sampler.LatencyClientOptions{
-			ID:       conf.PeerID,
-			Address:  addr,
-			Interval: conf.LatencyInterval,
-			Recorder: chain,
-			Log:      log,
-		})
+		latencyClientSampler, err := latency.NewClient(addr,
+			latency.ClientID(conf.PeerID),
+			latency.ClientInterval(conf.LatencyInterval),
+			latency.ClientRecorder(chain),
+			latency.ClientLog(log),
+		)
 		if err != nil {
 			return err
 		}
 		group = append(group, latencyClientSampler)
 	}
 
-	if conf.ListenAddr != "" {
-		latencyServerSampler, err := sampler.NewLatencyServer(sampler.LatencyServerOptions{
-			ID:       conf.PeerID,
-			Address:  conf.ListenAddr,
-			Recorder: chain,
-			Log:      log,
-		})
+	if conf.LatencyListenAddr != "" {
+		latencyServerSampler, err := latency.NewServer(conf.LatencyListenAddr,
+			latency.ServerID(conf.PeerID),
+			latency.ServerProtocol("tcp"),
+			latency.ServerRecorder(chain),
+			latency.ServerLog(log),
+			latency.ServerEnableReflection(),
+		)
 		if err != nil {
 			return err
 		}
@@ -85,7 +86,7 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	}
 
 	for _, addr := range conf.TraceSendAddrs {
-		traceRouteSampler, err := sampler.NewTraceRoute(sampler.TraceRouteOptions{
+		traceRouteSampler, err := traceroute.NewTraceRoute(traceroute.TraceRouteOptions{
 			ID:       conf.PeerID,
 			Address:  addr,
 			MaxHops:  conf.TraceMaxHops,
