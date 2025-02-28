@@ -1,4 +1,4 @@
-package latency
+package p2platency
 
 import (
 	"context"
@@ -180,7 +180,7 @@ func (s Server) Stop(ctx context.Context) error {
 		// fallthrough
 	case <-ctx.Done():
 		s.server.Stop()
-		return fmt.Errorf("graceful stop of %s (%d) failed: %w", serverName, s.id, ctx.Err())
+		return fmt.Errorf("graceful stop of %s (%s) failed: %w", serverName, s.id, ctx.Err())
 	}
 
 	s.log.Debug("stopped")

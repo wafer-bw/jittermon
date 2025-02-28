@@ -10,7 +10,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/sampler/latency"
+	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
 	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
 )
 
@@ -59,11 +59,11 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	chain := recorder.Chain(recorders...)
 
 	for _, addr := range conf.LatencySendAddrs {
-		latencyClientSampler, err := latency.NewClient(addr,
-			latency.ClientID(conf.PeerID),
-			latency.ClientInterval(conf.LatencyInterval),
-			latency.ClientRecorder(chain),
-			latency.ClientLog(log),
+		latencyClientSampler, err := p2platency.NewClient(addr,
+			p2platency.ClientID(conf.PeerID),
+			p2platency.ClientInterval(conf.LatencyInterval),
+			p2platency.ClientRecorder(chain),
+			p2platency.ClientLog(log),
 		)
 		if err != nil {
 			return err
@@ -72,12 +72,12 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	}
 
 	if conf.LatencyListenAddr != "" {
-		latencyServerSampler, err := latency.NewServer(conf.LatencyListenAddr,
-			latency.ServerID(conf.PeerID),
-			latency.ServerProtocol("tcp"),
-			latency.ServerRecorder(chain),
-			latency.ServerLog(log),
-			latency.ServerEnableReflection(),
+		latencyServerSampler, err := p2platency.NewServer(conf.LatencyListenAddr,
+			p2platency.ServerID(conf.PeerID),
+			p2platency.ServerProtocol("tcp"),
+			p2platency.ServerRecorder(chain),
+			p2platency.ServerLog(log),
+			p2platency.ServerEnableReflection(),
 		)
 		if err != nil {
 			return err
