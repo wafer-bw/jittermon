@@ -29,11 +29,15 @@ docker compose -f demo/docker-compose-fly.yml down
   costs $2/mo.
 
 ## TODOs
+- move api & pb folders into p2platency package
+- consider consolidating sample type enum & values by typing the sample value
+  like `type RTT time.Duration`.
+- handle src/dst id/address confusion
 - route tracing
   - hop filtering in grafana
 - persist loki data locally
 - long term nice to have
-  - add tracing via otel
+  - add code tracing via otel
     - collect traces in grafana via mimir
   - make checks workflow only runs when go code changes
   - Use ICMP for RTT?

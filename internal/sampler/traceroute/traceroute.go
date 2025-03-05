@@ -19,7 +19,7 @@ type TraceRoute struct {
 	addr     string
 	maxHops  int
 	timeout  time.Duration
-	recorder rec.Recorder
+	recorder rec.Recorder // TODO: accept local interface.
 	ticker   *time.Ticker
 	log      *slog.Logger
 }
@@ -80,7 +80,7 @@ func (tr TraceRoute) sample(ctx context.Context) error {
 	start := time.Now()
 
 	opts := traceroute.TraceOptions{MaxHops: tr.maxHops, Timeout: tr.timeout}
-	hops, err := traceroute.Trace(tr.addr, opts)
+	hops, err := traceroute.Trace(tr.addr, opts) // TODO: accept and use interface.
 	if err != nil {
 		tr.log.Error("failed traceroute", "err", err)
 		return fmt.Errorf("sampler.TraceRoute.Trace failed traceroute: %w", err)
