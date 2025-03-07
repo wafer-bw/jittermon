@@ -24,7 +24,7 @@ type config struct {
 	TraceSendAddrs    []string              `split_words:"true" default:""`
 	TraceInterval     time.Duration         `split_words:"true" default:"1s"`
 	TraceMaxHops      int                   `split_words:"true" default:"12"`
-	Metrics           []recorder.SampleType `split_words:"true" default:"rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,hop_rtt"`
+	Metrics           []recorder.SampleType `split_words:"true" default:"rtt,hop_rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets"`
 	MetricsAddr       string                `split_words:"true" default:""`
 	LogLevel          slog.Level            `split_words:"true" default:"INFO"`
 }
@@ -58,32 +58,19 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 
 	chain := recorder.Chain(recorders...)
 
-	for _, addr := range conf.LatencySendAddrs {
-		latencyClientSampler, err := p2platency.NewClient(addr,
-			p2platency.ClientID(conf.PeerID),
-			p2platency.ClientInterval(conf.LatencyInterval),
-			p2platency.ClientRecorder(chain),
-			p2platency.ClientLog(log),
-		)
-		if err != nil {
-			return err
-		}
-		group = append(group, latencyClientSampler)
+	peer, err := p2platency.NewPeer(
+		p2platency.WithID(conf.PeerID),
+		p2platency.WithListenAddress(conf.LatencyListenAddr),
+		p2platency.WithSendAddresses(conf.LatencySendAddrs...),
+		p2platency.WithInterval(conf.LatencyInterval),
+		p2platency.WithRecorder(chain),
+		p2platency.WithServerReflectionEnabled(true), // TODO: make controllable.
+		p2platency.WithLog(log),
+	)
+	if err != nil {
+		return err
 	}
-
-	if conf.LatencyListenAddr != "" {
-		latencyServerSampler, err := p2platency.NewServer(conf.LatencyListenAddr,
-			p2platency.ServerID(conf.PeerID),
-			p2platency.ServerProtocol("tcp"),
-			p2platency.ServerRecorder(chain),
-			p2platency.ServerLog(log),
-			p2platency.ServerEnableReflection(),
-		)
-		if err != nil {
-			return err
-		}
-		group = append(group, latencyServerSampler)
-	}
+	group = append(group, peer)
 
 	for _, addr := range conf.TraceSendAddrs {
 		traceRouteSampler, err := traceroute.NewTraceRoute(traceroute.TraceRouteOptions{

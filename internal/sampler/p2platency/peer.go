@@ -42,19 +42,15 @@ type Peer struct {
 	listenAddr              string
 	interval                time.Duration
 	recorder                Recorder
-	requestBuffers          jitter.HostPacketBuffers // TODO: accept interface.
 	proto                   string
-	server                  *grpc.Server
+	clientOptions           []grpc.DialOption
 	serverOptions           []grpc.ServerOption
 	serverReflectionEnabled bool
-	clients                 map[string]pollpb.PollServiceClient
-	clientConns             map[string]*grpc.ClientConn
-	clientOptions           []grpc.DialOption
 	log                     *slog.Logger
-	ticker                  *time.Ticker
-	startedCh               chan struct{} // TODO: is this needed?
-	stopCh                  chan struct{} // TODO: is this needed?
-	doneCh                  chan struct{} // TODO: is this needed?
+	group                   graceful.Group
+	startedCh               chan struct{}
+	stoppedCh               chan struct{}
+	doneCh                  chan struct{}
 
 	pollpb.UnimplementedPollServiceServer
 }
@@ -141,7 +137,8 @@ func NewPeer(options ...Option) (*Peer, error) {
 		serverOptions: defaultGRPCServerOpts,
 		clientOptions: defaulGRPCClientOpts,
 		log:           defaultLogger,
-		stopCh:        make(chan struct{}),
+		startedCh:     make(chan struct{}),
+		stoppedCh:     make(chan struct{}),
 		doneCh:        make(chan struct{}),
 	}
 
@@ -158,7 +155,9 @@ func NewPeer(options ...Option) (*Peer, error) {
 }
 
 func (p *Peer) Start(ctx context.Context) error {
-	group := graceful.Group{}
+	defer close(p.stoppedCh)
+
+	p.group = graceful.Group{}
 	for _, addr := range p.sendAddrs {
 		client := &grpcpeer.Client{
 			ID:            p.id,
@@ -168,7 +167,8 @@ func (p *Peer) Start(ctx context.Context) error {
 			ClientOptions: p.clientOptions,
 			Log:           p.log,
 		}
-		group = append(group, client)
+		client.Init()
+		p.group = append(p.group, client)
 	}
 
 	server := &grpcpeer.Server{
@@ -178,13 +178,25 @@ func (p *Peer) Start(ctx context.Context) error {
 		ServerOptions:           p.serverOptions,
 		ServerReflectionEnabled: p.serverReflectionEnabled,
 		Recorder:                p.recorder,
+		RequestBuffers:          jitter.NewHostPacketBuffers(),
 		Log:                     p.log,
 	}
-	group = append(group, server)
+	server.Init()
+	p.group = append(p.group, server)
 
-	return group.Start(ctx)
+	close(p.startedCh)
+
+	return p.group.Start(ctx)
 }
 
 func (p *Peer) Stop(ctx context.Context) error {
-	return nil
+	select {
+	case <-p.startedCh:
+	case <-p.stoppedCh:
+	}
+
+	// TODO: this shouldn't be used, it should just be based on the ctx passed
+	// to stop.
+	var timeout = 60 * time.Second
+	return p.group.Stop(ctx, timeout)
 }

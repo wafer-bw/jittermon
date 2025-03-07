@@ -33,21 +33,12 @@ type Client struct {
 	ClientOptions []grpc.DialOption
 	Log           *slog.Logger
 
-	client     pollpb.PollServiceClient
-	connection *grpc.ClientConn
-
-	// startedCh signals that everything started by [grpcClient.Start] has
-	// started.
-	//
-	// TODO: check if this is needed, it likely protects against races.
-	startedCh chan struct{}
-
-	// stopCh signals that everything started by [grpcClient.Start] should stop.
 	stopCh chan struct{}
+	client pollpb.PollServiceClient
+}
 
-	// stoppedCh signals that everything started by [grpcClient.Start] has
-	// stopped.
-	stoppedCh chan struct{}
+func (c *Client) Init() {
+	c.stopCh = make(chan struct{})
 }
 
 func (c Client) Poll(ctx context.Context) error {
@@ -91,17 +82,14 @@ func (c *Client) Start(ctx context.Context) error {
 	c.Log = c.Log.With("id", c.ID, "name", grpcClientName, "address", c.Address)
 	c.Log.Info("starting")
 
-	defer close(c.stoppedCh)
+	defer close(c.stopCh)
 
-	var err error
-	c.connection, err = grpc.NewClient(c.Address, c.ClientOptions...)
+	conn, err := grpc.NewClient(c.Address, c.ClientOptions...)
 	if err != nil {
 		return err
 	}
-	defer c.connection.Close()
-	c.client = pollpb.NewPollServiceClient(c.connection)
-
-	close(c.startedCh)
+	defer conn.Close()
+	c.client = pollpb.NewPollServiceClient(conn)
 
 	ticker := time.NewTicker(c.Interval)
 	defer ticker.Stop()
@@ -124,15 +112,10 @@ func (c *Client) Start(ctx context.Context) error {
 func (c *Client) Stop(ctx context.Context) error {
 	c.Log.Debug("stopping")
 
-	select {
-	case <-c.startedCh:
-	case <-c.stoppedCh:
-	}
-
 	close(c.stopCh)
 
 	select {
-	case <-c.stoppedCh:
+	case <-c.stopCh:
 		return nil
 	case <-ctx.Done():
 		return fmt.Errorf("graceful stop of %s[%s] failed: %w", grpcClientName, c.ID, ctx.Err())
@@ -149,20 +132,16 @@ type Server struct {
 	RequestBuffers          jitter.HostPacketBuffers // TODO: accept interface.
 	Log                     *slog.Logger
 
-	Server   *grpc.Server
-	Listener net.Listener
-
-	// StartedCh signals that everything started by [grpcClient.Start] has
-	// started.
-	//
-	// TODO: check if this is needed, it likely protects against races.
-	StartedCh chan struct{}
-
-	// StoppedCh signals that everything started by [grpcClient.Start] has
-	// stopped.
-	StoppedCh chan struct{}
+	startedCh chan struct{}
+	stoppedCh chan struct{}
+	server    *grpc.Server
 
 	pollpb.UnimplementedPollServiceServer
+}
+
+func (s *Server) Init() {
+	s.startedCh = make(chan struct{})
+	s.stoppedCh = make(chan struct{})
 }
 
 func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
@@ -198,35 +177,37 @@ func (s *Server) Start(ctx context.Context) error {
 	s.Log = s.Log.With("id", s.ID, "name", grpcServerName, "address", s.Address)
 	s.Log.Info("starting")
 
-	defer close(s.StoppedCh)
+	defer close(s.stoppedCh)
 
-	s.Server = grpc.NewServer(s.ServerOptions...)
-	pollpb.RegisterPollServiceServer(s.Server, s)
+	s.server = grpc.NewServer(s.ServerOptions...)
+	pollpb.RegisterPollServiceServer(s.server, s)
 	if s.ServerReflectionEnabled {
-		reflection.Register(s.Server)
+		reflection.Register(s.server)
 	}
 
 	var err error
-	s.Listener, err = net.Listen(s.Proto, s.Address)
+	listener, err := net.Listen(s.Proto, s.Address)
 	if err != nil {
 		return err
 	}
-	close(s.StartedCh)
+	defer listener.Close() // TODO: maybe close this in [Stop] and capture err?
 
-	return s.Server.Serve(s.Listener)
+	close(s.startedCh)
+
+	return s.server.Serve(listener)
 }
 
 func (s *Server) Stop(ctx context.Context) error {
 	s.Log.Debug("stopping")
 
 	select {
-	case <-s.StartedCh:
-	case <-s.StoppedCh:
+	case <-s.startedCh:
+	case <-s.stoppedCh:
 	}
 
 	gracefullyStoppedCh := make(chan struct{})
 	go func() {
-		s.Server.GracefulStop()
+		s.server.GracefulStop()
 		close(gracefullyStoppedCh)
 	}()
 
@@ -234,7 +215,7 @@ func (s *Server) Stop(ctx context.Context) error {
 	case <-gracefullyStoppedCh:
 		return nil
 	case <-ctx.Done():
-		s.Server.Stop()
+		s.server.Stop()
 		return fmt.Errorf("graceful stop of %s[%s] failed: %w", grpcServerName, s.ID, ctx.Err())
 	}
 }

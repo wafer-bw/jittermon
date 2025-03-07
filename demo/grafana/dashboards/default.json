@@ -283,7 +283,6 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
             "mode": "palette-classic"
           },
           "custom": {
@@ -324,7 +323,6 @@
           },
           "decimals": 2,
           "mappings": [],
-          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -371,7 +369,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(rate(jittermon_hop_rtt_duration_seconds_sum{job=\"jittermon\", hop=~\"[4-9]\"}[$__rate_interval])) by (hop, addr, hostname) / sum(rate(jittermon_hop_rtt_duration_seconds_count{job=\"jittermon\", hop=~\"[4-9]\"}[$__rate_interval])) by (hop, addr, hostname) > 0",
+          "expr": "sum(rate(jittermon_hop_rtt_duration_seconds_sum{job=\"jittermon\", hop=~\"[3-9]\"}[$__rate_interval])) by (hop, addr, hostname) / sum(rate(jittermon_hop_rtt_duration_seconds_count{job=\"jittermon\", hop=~\"[3-9]\"}[$__rate_interval])) by (hop, addr, hostname) > 0",
           "format": "time_series",
           "legendFormat": "{{hop}} ({{hostname}})",
           "range": true,
@@ -612,6 +610,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 31,
+  "version": 35,
   "weekStart": ""
 }

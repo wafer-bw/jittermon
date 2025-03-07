@@ -35,6 +35,7 @@ docker compose -f demo/docker-compose-fly.yml down
 - handle src/dst id/address confusion
 - route tracing
   - hop filtering in grafana
+  - more useful visualizations
 - persist loki data locally
 - long term nice to have
   - add code tracing via otel
