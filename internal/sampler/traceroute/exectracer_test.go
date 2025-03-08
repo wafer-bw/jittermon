@@ -59,6 +59,40 @@ func TestExecTracer(t *testing.T) {
 		require.Error(t, err)
 		require.Empty(t, hops)
 	})
+
+	t.Run("returns error parsing traceroute output line", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		execfn := func(name string, args ...string) (string, error) {
+			return `
+				traceroute to 8.8.8.8 (8.8.8.8), 64 hops max, 40 byte packets
+				1  192.168.1.1  0.828 ms
+			`, nil
+		}
+
+		tr := &traceroute.ExecTracer{ExecFn: execfn}
+		hops, err := tr.Trace(ctx, "8.8.8.8")
+		require.Error(t, err)
+		require.Empty(t, hops)
+	})
+
+	t.Run("returns error parsing traceroute output line duration", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		execfn := func(name string, args ...string) (string, error) {
+			return `
+				traceroute to 8.8.8.8 (8.8.8.8), 64 hops max, 40 byte packets
+				1  192.168.1.1 (192.168.1.1)  0.8ZZZ28 ms
+			`, nil
+		}
+
+		tr := &traceroute.ExecTracer{ExecFn: execfn}
+		hops, err := tr.Trace(ctx, "8.8.8.8")
+		require.Error(t, err)
+		require.Empty(t, hops)
+	})
 }
 
 func ptr[T any](v T) *T {
