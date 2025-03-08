@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/wafer-bw/jittermon/internal/jitter"
+	"github.com/wafer-bw/jittermon/internal/recorder"
 	rec "github.com/wafer-bw/jittermon/internal/recorder"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/grpcpeer"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/grpcpeer/pollpb"
@@ -193,18 +194,17 @@ func TestClient_Start(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("start exits when stop channel is closed", func(t *testing.T) {
+	t.Run("exits when stop channel is closed", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
 		client := &grpcpeer.Client{
 			ID:            "client",
 			Address:       addr,
 			Interval:      1 * time.Second,
 			ClientOptions: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
-			Recorder:      mockRecorder,
+			Recorder:      recorder.NoOp,
 			Log:           slog.New(slog.DiscardHandler),
 			StopCh:        make(chan struct{}),
 			StoppedCh:     make(chan struct{}),
@@ -216,20 +216,18 @@ func TestClient_Start(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("start fails when context is closed", func(t *testing.T) {
+	t.Run("fails when context is closed", func(t *testing.T) {
 		t.Parallel()
 
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
-
-		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
 		client := &grpcpeer.Client{
 			ID:            "client",
 			Address:       addr,
 			Interval:      1 * time.Second,
 			ClientOptions: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
-			Recorder:      mockRecorder,
+			Recorder:      rec.NoOp,
 			Log:           slog.New(slog.DiscardHandler),
 			StopCh:        make(chan struct{}),
 			StoppedCh:     make(chan struct{}),
@@ -240,19 +238,17 @@ func TestClient_Start(t *testing.T) {
 		require.ErrorIs(t, err, context.Canceled)
 	})
 
-	t.Run("start fails when client creation fails", func(t *testing.T) {
+	t.Run("fails when client creation fails", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-
-		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
 		client := &grpcpeer.Client{
 			ID:            "client",
 			Address:       addr,
 			Interval:      1 * time.Second,
 			ClientOptions: []grpc.DialOption{}, // invokes desired failure.
-			Recorder:      mockRecorder,
+			Recorder:      rec.NoOp,
 			Log:           slog.New(slog.DiscardHandler),
 			StopCh:        make(chan struct{}),
 			StoppedCh:     make(chan struct{}),

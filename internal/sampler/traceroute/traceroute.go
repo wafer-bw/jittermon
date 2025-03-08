@@ -2,11 +2,14 @@ package traceroute
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/wafer-bw/go-toolbox/graceful"
+	"github.com/wafer-bw/jittermon/internal/littleid"
 	rec "github.com/wafer-bw/jittermon/internal/recorder"
 )
 
@@ -14,13 +17,9 @@ var _ graceful.Runner = (*TraceRoute)(nil)
 
 const (
 	SamplerName     string        = "traceroute"
-	defaultInterval time.Duration = 1 * time.Second
-	defaultTimeout  time.Duration = 1 * time.Second
-	defaultMaxHops  int           = 24
-)
-
-var (
-	defaultTracer = &execTracer{Timeout: defaultTimeout, MaxHops: defaultMaxHops}
+	DefaultInterval time.Duration = 1 * time.Second
+	DefaultAddress  string        = "8.8.8.8"
+	DefaultMaxHops  int           = 24
 )
 
 type Tracer interface {
@@ -32,80 +31,136 @@ type Recorder interface {
 }
 
 type TraceRoute struct {
-	id       string
-	addr     string
-	maxHops  int
-	timeout  time.Duration
-	interval time.Duration
-	tracer   Tracer
-	recorder Recorder
-	ticker   *time.Ticker
-	log      *slog.Logger
+	id        string
+	address   string
+	maxHops   int
+	interval  time.Duration
+	tracer    Tracer
+	recorder  Recorder
+	log       *slog.Logger
+	stoppedCh chan struct{}
+	stopCh    chan struct{}
 }
 
-type TraceRouteOptions struct {
-	ID       string
-	Address  string
-	MaxHops  int
-	Timeout  time.Duration
-	Interval time.Duration
-	Tracer   Tracer
-	Recorder Recorder
-	Log      *slog.Logger
+type Option func(*TraceRoute) error
+
+func WithID(id string) Option {
+	return func(tr *TraceRoute) error {
+		if id == "" {
+			return nil
+		}
+		tr.id = strings.TrimSpace(id)
+		return nil
+	}
 }
 
-func NewTraceRoute(options TraceRouteOptions) (TraceRoute, error) {
-	tr := TraceRoute{
-		id:       options.ID,
-		addr:     options.Address,
-		maxHops:  options.MaxHops,
-		timeout:  options.Timeout,
-		interval: options.Interval,
-		tracer:   options.Tracer,
-		recorder: options.Recorder,
-		log:      options.Log,
+func WithAddress(address string) Option {
+	return func(tr *TraceRoute) error {
+		if address == "" {
+			return nil
+		}
+		tr.address = address
+		return nil
+	}
+}
+
+func WithInterval(interval time.Duration) Option {
+	return func(tr *TraceRoute) error {
+		if interval <= 0 {
+			return nil
+		}
+		tr.interval = interval
+		return nil
+	}
+}
+
+func WithMaxHops(maxHops int) Option {
+	return func(tr *TraceRoute) error {
+		if maxHops <= 0 {
+			return nil
+		}
+		tr.maxHops = maxHops
+		return nil
+	}
+}
+
+func WithRecorder(recorder rec.Recorder) Option {
+	return func(tr *TraceRoute) error {
+		tr.recorder = recorder
+		return nil
+	}
+}
+
+func WithLog(log *slog.Logger) Option {
+	return func(tr *TraceRoute) error {
+		tr.log = log
+		return nil
+	}
+}
+
+func NewTraceRoute(options ...Option) (*TraceRoute, error) {
+	tr := &TraceRoute{
+		id:        littleid.New(),
+		address:   DefaultAddress,
+		maxHops:   DefaultMaxHops,
+		interval:  DefaultInterval,
+		recorder:  rec.NoOp,
+		log:       slog.New(slog.DiscardHandler),
+		stoppedCh: make(chan struct{}),
+		stopCh:    make(chan struct{}),
 	}
 
-	if tr.tracer == nil {
-		tr.tracer = defaultTracer
+	for _, opt := range options {
+		if opt == nil {
+			continue
+		}
+		if err := opt(tr); err != nil {
+			return nil, err
+		}
 	}
 
-	if tr.log == nil {
-		tr.log = slog.New(slog.DiscardHandler)
-	}
-
-	if tr.interval == 0 {
-		tr.interval = defaultInterval
-	}
+	tr.tracer = &execTracer{Timeout: tr.interval, MaxHops: tr.maxHops}
 
 	return tr, nil
 }
 
 func (tr TraceRoute) Start(ctx context.Context) error {
+	defer close(tr.stoppedCh)
+
 	ticker := time.NewTicker(tr.interval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-tr.ticker.C:
+		case <-ticker.C:
 			if err := tr.Trace(ctx); err != nil {
 				return err
 			}
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-tr.stopCh:
+			return nil
 		}
 	}
 }
 
 func (tr TraceRoute) Stop(ctx context.Context) error {
-	tr.ticker.Stop()
-	return nil
+	tr.log.Debug("stopping")
+
+	close(tr.stopCh)
+
+	select {
+	case <-tr.stoppedCh:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("graceful stop of %s[%s] failed: %w", SamplerName, tr.id, ctx.Err())
+	}
 }
 
 func (tr TraceRoute) Trace(ctx context.Context) error {
 	start := time.Now()
 
-	hops, err := tr.tracer.Trace(ctx, tr.addr)
+	hops, err := tr.tracer.Trace(ctx, tr.address)
 	if err != nil {
 		return err
 	}
@@ -113,7 +168,7 @@ func (tr TraceRoute) Trace(ctx context.Context) error {
 	for _, hop := range hops {
 		labels := rec.Labels{
 			{K: "src", V: tr.id},
-			{K: "dst", V: tr.addr},
+			{K: "dst", V: tr.address},
 			{K: "hop", V: strconv.Itoa(hop.Hop)},
 			{K: "addr", V: hop.Addr},
 			{K: "hostname", V: hop.Name},

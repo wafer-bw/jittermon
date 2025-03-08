@@ -9,7 +9,7 @@ import (
 	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
 )
 
-func TestExecTracer(t *testing.T) {
+func TestExecTracer_Trace(t *testing.T) {
 	t.Parallel()
 
 	t.Run("successful trace", func(t *testing.T) {

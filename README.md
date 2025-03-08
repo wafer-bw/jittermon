@@ -38,6 +38,7 @@ docker compose -f demo/docker-compose-fly.yml down
   - hop filtering in grafana
   - more useful visualizations
 - persist loki data locally
+- promote samplers out of internal
 - long term nice to have
   - add code tracing via otel
     - collect traces in grafana via mimir

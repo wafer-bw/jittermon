@@ -38,12 +38,13 @@ func TestNewPeer(t *testing.T) {
 			p2platency.WithRecorder(rec),
 			p2platency.WithLog(log),
 		)
+		require.NoError(t, err)
+		require.NotNil(t, p)
 
 		grpcConf := p.GetGRPCConfig()
 		p.GetRecorder().Record(ctx, recorder.Sample{})
+		require.True(t, recorderCalled)
 
-		require.NoError(t, err)
-		require.NotNil(t, p)
 		require.Len(t, p.GetGroup(), 3)
 		require.Equal(t, "id", p.GetID())
 		require.Equal(t, 250*time.Millisecond, p.GetInterval())
@@ -56,7 +57,6 @@ func TestNewPeer(t *testing.T) {
 		require.NotNil(t, grpcConf.ServerOptions)
 		require.Empty(t, grpcConf.ServerOptions)
 		require.True(t, grpcConf.Reflection)
-		require.True(t, recorderCalled)
 		require.Equal(t, log, p.GetLog())
 	})
 
@@ -85,14 +85,16 @@ func TestNewPeer(t *testing.T) {
 		p, err := p2platency.NewPeer(p2platency.WithInterval(0))
 		require.NoError(t, err)
 		require.NotNil(t, p)
-		require.NotZero(t, p.GetInterval())
+		require.Equal(t, p2platency.DefaultInterval, p.GetInterval())
 	})
 
 	t.Run("does not panic when passed nil options", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := p2platency.NewPeer(nil, nil)
-		require.NoError(t, err)
+		require.NotPanics(t, func() {
+			_, err := p2platency.NewPeer(nil, nil)
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("executes provided options", func(t *testing.T) {
