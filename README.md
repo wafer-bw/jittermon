@@ -33,6 +33,8 @@ docker compose -f demo/docker-compose-fly.yml down
 - consider consolidating sample type enum & values by typing the sample value
   like `type RTT time.Duration`.
 - handle src/dst id/address confusion
+- back off send rate when failing
+- should `jitter.minSamples` be 3?
 - route tracing
   - hop filtering in grafana
   - more useful visualizations

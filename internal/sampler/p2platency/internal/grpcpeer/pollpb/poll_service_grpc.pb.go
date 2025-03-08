@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.29.2
-// source: api/poll/poll_service.proto
+// source: internal/sampler/p2platency/internal/grpcpeer/proto/poll_service.proto
 
 package pollpb
 
@@ -117,5 +117,5 @@ var PollService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/poll/poll_service.proto",
+	Metadata: "internal/sampler/p2platency/internal/grpcpeer/proto/poll_service.proto",
 }

@@ -9,10 +9,10 @@ import (
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/littleid"
-	"github.com/wafer-bw/jittermon/internal/pb/pollpb"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 	rec "github.com/wafer-bw/jittermon/internal/recorder"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/grpcpeer"
+	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/grpcpeer/pollpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
@@ -27,8 +27,8 @@ const (
 )
 
 var (
-	defaultGRPCServerOpts []grpc.ServerOption = []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: maxConnectionIdle})}
 	defaulGRPCClientOpts  []grpc.DialOption   = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	defaultGRPCServerOpts []grpc.ServerOption = []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: maxConnectionIdle})}
 	defaultLogger         *slog.Logger        = slog.New(slog.DiscardHandler)
 )
 
@@ -166,8 +166,8 @@ func (p *Peer) Start(ctx context.Context) error {
 			Recorder:      p.recorder,
 			ClientOptions: p.clientOptions,
 			Log:           p.log,
+			StopCh:        make(chan struct{}),
 		}
-		client.Init()
 		p.group = append(p.group, client)
 	}
 
@@ -180,8 +180,9 @@ func (p *Peer) Start(ctx context.Context) error {
 		Recorder:                p.recorder,
 		RequestBuffers:          jitter.NewHostPacketBuffers(),
 		Log:                     p.log,
+		StartedCh:               make(chan struct{}),
+		StoppedCh:               make(chan struct{}),
 	}
-	server.Init()
 	p.group = append(p.group, server)
 
 	close(p.startedCh)

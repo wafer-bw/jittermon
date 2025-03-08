@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/wafer-bw/jittermon/internal/jitter"
-	"github.com/wafer-bw/jittermon/internal/pb/pollpb"
 	rec "github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/grpcpeer/pollpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -25,6 +25,10 @@ type Recorder interface {
 	rec.Recorder
 }
 
+type ClientPoller interface {
+	pollpb.PollServiceClient
+}
+
 type Client struct {
 	ID            string
 	Address       string
@@ -32,13 +36,10 @@ type Client struct {
 	Recorder      Recorder
 	ClientOptions []grpc.DialOption
 	Log           *slog.Logger
+	StopCh        chan struct{}
+	StoppedCh     chan struct{}
 
-	stopCh chan struct{}
-	client pollpb.PollServiceClient
-}
-
-func (c *Client) Init() {
-	c.stopCh = make(chan struct{})
+	Client pollpb.PollServiceClient
 }
 
 func (c Client) Poll(ctx context.Context) error {
@@ -50,7 +51,7 @@ func (c Client) Poll(ctx context.Context) error {
 	req.SetTimestamp(timestamppb.New(start))
 
 	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
-	rsp, err := c.client.Poll(ctx, req)
+	rsp, err := c.Client.Poll(ctx, req)
 	if err != nil {
 		c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeLostPackets, Val: struct{}{}, Labels: labels})
 		c.Log.Error("poll failed", "err", err)
@@ -82,14 +83,16 @@ func (c *Client) Start(ctx context.Context) error {
 	c.Log = c.Log.With("id", c.ID, "name", grpcClientName, "address", c.Address)
 	c.Log.Info("starting")
 
-	defer close(c.stopCh)
+	defer close(c.StoppedCh)
 
-	conn, err := grpc.NewClient(c.Address, c.ClientOptions...)
-	if err != nil {
-		return err
+	if c.Client == nil {
+		conn, err := grpc.NewClient(c.Address, c.ClientOptions...)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		c.Client = pollpb.NewPollServiceClient(conn)
 	}
-	defer conn.Close()
-	c.client = pollpb.NewPollServiceClient(conn)
 
 	ticker := time.NewTicker(c.Interval)
 	defer ticker.Stop()
@@ -103,7 +106,7 @@ func (c *Client) Start(ctx context.Context) error {
 			}
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-c.stopCh:
+		case <-c.StopCh:
 			return nil
 		}
 	}
@@ -112,10 +115,10 @@ func (c *Client) Start(ctx context.Context) error {
 func (c *Client) Stop(ctx context.Context) error {
 	c.Log.Debug("stopping")
 
-	close(c.stopCh)
+	close(c.StopCh)
 
 	select {
-	case <-c.stopCh:
+	case <-c.StoppedCh:
 		return nil
 	case <-ctx.Done():
 		return fmt.Errorf("graceful stop of %s[%s] failed: %w", grpcClientName, c.ID, ctx.Err())
@@ -131,17 +134,12 @@ type Server struct {
 	Recorder                Recorder
 	RequestBuffers          jitter.HostPacketBuffers // TODO: accept interface.
 	Log                     *slog.Logger
+	StartedCh               chan struct{}
+	StoppedCh               chan struct{}
 
-	startedCh chan struct{}
-	stoppedCh chan struct{}
-	server    *grpc.Server
+	Server *grpc.Server
 
 	pollpb.UnimplementedPollServiceServer
-}
-
-func (s *Server) Init() {
-	s.startedCh = make(chan struct{})
-	s.stoppedCh = make(chan struct{})
 }
 
 func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
@@ -177,12 +175,12 @@ func (s *Server) Start(ctx context.Context) error {
 	s.Log = s.Log.With("id", s.ID, "name", grpcServerName, "address", s.Address)
 	s.Log.Info("starting")
 
-	defer close(s.stoppedCh)
+	defer close(s.StoppedCh)
 
-	s.server = grpc.NewServer(s.ServerOptions...)
-	pollpb.RegisterPollServiceServer(s.server, s)
+	s.Server = grpc.NewServer(s.ServerOptions...)
+	pollpb.RegisterPollServiceServer(s.Server, s)
 	if s.ServerReflectionEnabled {
-		reflection.Register(s.server)
+		reflection.Register(s.Server)
 	}
 
 	var err error
@@ -192,22 +190,24 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	defer listener.Close() // TODO: maybe close this in [Stop] and capture err?
 
-	close(s.startedCh)
+	close(s.StartedCh)
 
-	return s.server.Serve(listener)
+	return s.Server.Serve(listener)
 }
 
 func (s *Server) Stop(ctx context.Context) error {
 	s.Log.Debug("stopping")
 
-	select {
-	case <-s.startedCh:
-	case <-s.stoppedCh:
-	}
-
 	gracefullyStoppedCh := make(chan struct{})
 	go func() {
-		s.server.GracefulStop()
+		select {
+		case <-s.StartedCh:
+		case <-s.StoppedCh:
+		case <-ctx.Done():
+			return
+		}
+
+		s.Server.GracefulStop()
 		close(gracefullyStoppedCh)
 	}()
 
@@ -215,7 +215,7 @@ func (s *Server) Stop(ctx context.Context) error {
 	case <-gracefullyStoppedCh:
 		return nil
 	case <-ctx.Done():
-		s.server.Stop()
+		s.Server.Stop()
 		return fmt.Errorf("graceful stop of %s[%s] failed: %w", grpcServerName, s.ID, ctx.Err())
 	}
 }
