@@ -1,3 +1,4 @@
+// TODO: docstring.
 package p2platency
 
 import (
@@ -18,17 +19,23 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
+var _ graceful.Runner = (*Peer)(nil)
+
 const (
-	name              string        = "grpc_p2p_latency"
+	SamplerName     string        = "p2platency"
+	DefaultInterval time.Duration = 1 * time.Second
+)
+
+const (
+	defaultMode       mode          = modeGRPC
 	defaultProto      string        = "tcp"
 	maxConnectionIdle time.Duration = 5 * time.Minute
-
-	DefaultInterval time.Duration = 1 * time.Second
 )
 
 var (
 	defaulGRPCClientOpts  []grpc.DialOption   = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	defaultGRPCServerOpts []grpc.ServerOption = []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: maxConnectionIdle})}
+	defaultGRPCReflection bool                = true
 	defaultLogger         *slog.Logger        = slog.New(slog.DiscardHandler)
 )
 
@@ -36,23 +43,33 @@ type Recorder interface {
 	recorder.Recorder
 }
 
+type mode uint8
+
+const (
+	modeGRPC mode = iota // only supported mode for now
+)
+
 type Peer struct {
-	id                      string
-	sendAddrs               []string
-	listenAddr              string
-	interval                time.Duration
-	recorder                Recorder
-	proto                   string
-	clientOptions           []grpc.DialOption
-	serverOptions           []grpc.ServerOption
-	serverReflectionEnabled bool
-	log                     *slog.Logger
-	group                   graceful.Group
-	startedCh               chan struct{}
-	stoppedCh               chan struct{}
-	doneCh                  chan struct{}
+	id            string
+	sendAddresses []string
+	listenAddress string
+	interval      time.Duration
+	recorder      Recorder
+	mode          mode
+	grpc          grpcConfig
+	log           *slog.Logger
+	group         graceful.Group
+	stoppedCh     chan struct{}
+	doneCh        chan struct{}
 
 	pollpb.UnimplementedPollServiceServer
+}
+
+type grpcConfig struct {
+	Proto         string
+	ClientOptions []grpc.DialOption
+	ServerOptions []grpc.ServerOption
+	Reflection    bool
 }
 
 type Option func(*Peer) error
@@ -93,35 +110,25 @@ func WithLog(log *slog.Logger) Option {
 
 func WithSendAddresses(addrs ...string) Option {
 	return func(p *Peer) error {
-		p.sendAddrs = addrs
+		p.sendAddresses = addrs
 		return nil
 	}
 }
 
 func WithListenAddress(addr string) Option {
 	return func(p *Peer) error {
-		p.listenAddr = addr
+		p.listenAddress = addr
 		return nil
 	}
 }
 
-func WithServerReflectionEnabled(b bool) Option {
+func WithGRPC(proto string, clientOpts []grpc.DialOption, serverOpts []grpc.ServerOption, reflection bool) Option {
 	return func(p *Peer) error {
-		p.serverReflectionEnabled = b
-		return nil
-	}
-}
-
-func WithGRPCServerOptions(opts ...grpc.ServerOption) Option {
-	return func(p *Peer) error {
-		p.serverOptions = opts
-		return nil
-	}
-}
-
-func WithGRPCClientOptions(opts ...grpc.DialOption) Option {
-	return func(p *Peer) error {
-		p.clientOptions = opts
+		p.mode = modeGRPC
+		p.grpc.Proto = proto
+		p.grpc.ServerOptions = serverOpts
+		p.grpc.ClientOptions = clientOpts
+		p.grpc.Reflection = reflection
 		return nil
 	}
 }
@@ -130,16 +137,19 @@ func WithGRPCClientOptions(opts ...grpc.DialOption) Option {
 
 func NewPeer(options ...Option) (*Peer, error) {
 	p := &Peer{
-		id:            littleid.New(),
-		interval:      DefaultInterval,
-		recorder:      rec.NoOp,
-		proto:         defaultProto,
-		serverOptions: defaultGRPCServerOpts,
-		clientOptions: defaulGRPCClientOpts,
-		log:           defaultLogger,
-		startedCh:     make(chan struct{}),
-		stoppedCh:     make(chan struct{}),
-		doneCh:        make(chan struct{}),
+		id:       littleid.New(),
+		interval: DefaultInterval,
+		recorder: rec.NoOp,
+		mode:     defaultMode,
+		grpc: grpcConfig{
+			Proto:         defaultProto,
+			ServerOptions: defaultGRPCServerOpts,
+			ClientOptions: defaulGRPCClientOpts,
+			Reflection:    defaultGRPCReflection,
+		},
+		log:       defaultLogger,
+		stoppedCh: make(chan struct{}),
+		doneCh:    make(chan struct{}),
 	}
 
 	for _, opt := range options {
@@ -151,49 +161,47 @@ func NewPeer(options ...Option) (*Peer, error) {
 		}
 	}
 
-	return p, nil
-}
-
-func (p *Peer) Start(ctx context.Context) error {
-	defer close(p.stoppedCh)
-
 	p.group = graceful.Group{}
-	for _, addr := range p.sendAddrs {
+	for _, addr := range p.sendAddresses {
 		client := &grpcpeer.Client{
 			ID:            p.id,
 			Address:       addr,
 			Interval:      p.interval,
 			Recorder:      p.recorder,
-			ClientOptions: p.clientOptions,
+			ClientOptions: p.grpc.ClientOptions,
 			Log:           p.log,
 			StopCh:        make(chan struct{}),
 		}
 		p.group = append(p.group, client)
 	}
 
-	server := &grpcpeer.Server{
-		ID:                      p.id,
-		Address:                 p.listenAddr,
-		Proto:                   p.proto,
-		ServerOptions:           p.serverOptions,
-		ServerReflectionEnabled: p.serverReflectionEnabled,
-		Recorder:                p.recorder,
-		RequestBuffers:          jitter.NewHostPacketBuffers(),
-		Log:                     p.log,
-		StartedCh:               make(chan struct{}),
-		StoppedCh:               make(chan struct{}),
+	if p.listenAddress != "" {
+		server := &grpcpeer.Server{
+			ID:                      p.id,
+			Address:                 p.listenAddress,
+			Proto:                   p.grpc.Proto,
+			ServerOptions:           p.grpc.ServerOptions,
+			ServerReflectionEnabled: p.grpc.Reflection,
+			Recorder:                p.recorder,
+			RequestBuffers:          jitter.NewHostPacketBuffers(),
+			Log:                     p.log,
+			StoppedCh:               make(chan struct{}),
+		}
+		p.group = append(p.group, server)
 	}
-	p.group = append(p.group, server)
 
-	close(p.startedCh)
+	return p, nil
+}
 
+func (p *Peer) Start(ctx context.Context) error {
+	defer close(p.stoppedCh)
 	return p.group.Start(ctx)
 }
 
 func (p *Peer) Stop(ctx context.Context) error {
 	select {
-	case <-p.startedCh:
 	case <-p.stoppedCh:
+	case <-ctx.Done():
 	}
 
 	// TODO: this shouldn't be used, it should just be based on the ctx passed

@@ -64,7 +64,6 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 		p2platency.WithSendAddresses(conf.LatencySendAddrs...),
 		p2platency.WithInterval(conf.LatencyInterval),
 		p2platency.WithRecorder(chain),
-		p2platency.WithServerReflectionEnabled(true), // TODO: make controllable.
 		p2platency.WithLog(log),
 	)
 	if err != nil {

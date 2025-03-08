@@ -29,9 +29,8 @@ docker compose -f demo/docker-compose-fly.yml down
   costs $2/mo.
 
 ## TODOs
-- move api & pb folders into p2platency package
-- consider consolidating sample type enum & values by typing the sample value
-  like `type RTT time.Duration`.
+- consider contractually ensuring samplers emit samples, and conform to a common
+  `Sampler` interface.
 - handle src/dst id/address confusion
 - back off send rate when failing
 - should `jitter.minSamples` be 3?
