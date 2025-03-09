@@ -29,6 +29,7 @@ docker compose -f demo/docker-compose-fly.yml down
   costs $2/mo.
 
 ## TODOs
+- add a way to request samplers by name
 - consider contractually ensuring samplers emit samples, and conform to a common
   `Sampler` interface.
 - handle src/dst id/address confusion
