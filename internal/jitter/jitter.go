@@ -41,6 +41,9 @@ func (b HostPacketBuffers) Jitter(hostID string) (time.Duration, bool) {
 	return buffer.jitter()
 }
 
+// TODO: instead of accepting a packet type, just accept the properties needed
+// as args.
+// TODO: potentially combine with Jitter method.
 func (b HostPacketBuffers) Sample(hostID string, e Packet) {
 	b.mu.Lock()
 	defer b.mu.Unlock()

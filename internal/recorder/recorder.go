@@ -5,6 +5,34 @@ import (
 	"time"
 )
 
+// NoOp recorder for when you don't want samples to be recorded.
+var NoOp RecorderFunc = func(context.Context, Sample) {}
+
+// Labels provides a deterministicly ordered set of key-value pair labels for
+// use with [Sample].
+type Labels []Label
+
+func (ls Labels) Keys() []string {
+	keys := make([]string, len(ls))
+	for i, l := range ls {
+		keys[i] = l.K
+	}
+	return keys
+}
+
+func (ls Labels) Values() []string {
+	values := make([]string, len(ls))
+	for i, l := range ls {
+		values[i] = l.V
+	}
+	return values
+}
+
+type Label struct {
+	K string
+	V string
+}
+
 // TODO: docstring.
 type SampleType string
 
@@ -13,16 +41,16 @@ const (
 	SampleTypeUpstreamJitter   SampleType = "upstream_jitter"
 	SampleTypeSentPackets      SampleType = "sent_packets"
 	SampleTypeLostPackets      SampleType = "lost_packets"
-	SampleTypeRTT              SampleType = "rtt" // round trip time (ping).
+	SampleTypeRTT              SampleType = "rtt"     // round trip time (ping).
+	SampleTypeHopRTT           SampleType = "hop_rtt" // traceroute hop rtt.
 )
 
 // Sample is the data structure that is recorded by a [Recorder].
 type Sample struct {
-	Time time.Time
-	Type SampleType
-	Src  string // source address/id/name.
-	Dst  string // destination address/id/name.
-	Val  any    // value to record if there is one.
+	Time   time.Time
+	Type   SampleType // TODO: rename to Key and likely just make it a string.
+	Val    any        // value to record if there is one.
+	Labels Labels
 }
 
 // ChainLink is a function that accepts and returns a [Recorder]. The returned
@@ -47,6 +75,7 @@ func (f RecorderFunc) Record(ctx context.Context, s Sample) {
 
 // Chain [ChainLink]s together to create a single [Recorder].
 func Chain(recorders ...ChainLink) Recorder {
+	// TODO: consider making receiver of type []ChainLink.
 	terminal := RecorderFunc(func(ctx context.Context, s Sample) { return })
 	if len(recorders) == 0 {
 		return terminal

@@ -88,10 +88,9 @@ func TestPrometheus_RecordDuration(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		src, dst := "a", "b"
 		samples := []recorder.Sample{
-			{Type: "abc", Src: src, Dst: dst, Val: 1 * time.Second},
-			{Type: "def", Src: src, Dst: dst, Val: 1 * time.Second},
+			{Type: "abc", Val: 1 * time.Second},
+			{Type: "def", Val: 1 * time.Second},
 		}
 
 		p, err := recorder.NewPrometheus(":8080", nil)
@@ -108,10 +107,9 @@ func TestPrometheus_RecordDuration(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		src, dst := "a", "b"
 		samples := []recorder.Sample{
-			{Type: "abc", Src: src, Dst: dst, Val: "abc"},
-			{Type: "def", Src: src, Dst: dst, Val: struct{}{}},
+			{Type: "abc", Val: "abc"},
+			{Type: "def", Val: struct{}{}},
 		}
 
 		p, err := recorder.NewPrometheus(":8080", nil)
@@ -132,10 +130,9 @@ func TestPrometheus_RecordIncrement(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		src, dst := "a", "b"
 		samples := []recorder.Sample{
-			{Type: "abc", Src: src, Dst: dst, Val: struct{}{}},
-			{Type: "def", Src: src, Dst: dst, Val: struct{}{}},
+			{Type: "abc", Val: struct{}{}},
+			{Type: "def", Val: struct{}{}},
 		}
 
 		p, err := recorder.NewPrometheus(":8080", nil)
@@ -152,10 +149,9 @@ func TestPrometheus_RecordIncrement(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		src, dst := "a", "b"
 		samples := []recorder.Sample{
-			{Type: "abc", Src: src, Dst: dst, Val: 1},
-			{Type: "def", Src: src, Dst: dst, Val: 1 * time.Second},
+			{Type: "abc", Val: 1},
+			{Type: "def", Val: 1 * time.Second},
 		}
 
 		p, err := recorder.NewPrometheus(":8080", nil)

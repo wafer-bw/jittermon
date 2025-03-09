@@ -9,75 +9,86 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/go-toolbox/graceful"
-	"github.com/wafer-bw/jittermon/internal/comms"
-	"github.com/wafer-bw/jittermon/internal/peer"
 	"github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
+	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
 )
 
 const shutdownTimeout time.Duration = 250 * time.Millisecond
 
 type config struct {
-	PeerID      string                `split_words:"true"`
-	ListenAddr  string                `split_words:"true" default:":8080"`
-	SendAddrs   []string              `split_words:"true" default:":8081"`
-	MetricsAddr string                `split_words:"true" default:""`
-	Interval    time.Duration         `split_words:"true" default:"1s"`
-	LogLevel    slog.Level            `split_words:"true" default:"INFO"`
-	Metrics     []recorder.SampleType `split_words:"true" default:"rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets"`
-	Write       bool                  `split_words:"true" default:"false"`
+	PeerID            string                `split_words:"true"`
+	LatencyListenAddr string                `split_words:"true" default:":8080"`
+	LatencySendAddrs  []string              `split_words:"true" default:":8081"`
+	LatencyInterval   time.Duration         `split_words:"true" default:"1s"`
+	TraceSendAddrs    []string              `split_words:"true" default:""`
+	TraceInterval     time.Duration         `split_words:"true" default:"1s"`
+	TraceMaxHops      int                   `split_words:"true" default:"12"`
+	Metrics           []recorder.SampleType `split_words:"true" default:"rtt,hop_rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets"`
+	MetricsAddr       string                `split_words:"true" default:""`
+	LogLevel          slog.Level            `split_words:"true" default:"INFO"`
 }
 
 func main() {
 	ctx := context.Background()
-	conf := &config{}
-	envconfig.MustProcess("JITTERMON", conf)
+	conf := config{}
+	envconfig.MustProcess("JITTERMON", &conf)
+
+	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: conf.LogLevel}))
+
+	if err := run(ctx, log, conf); err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context, log *slog.Logger, conf config) error {
 	group := graceful.Group{}
 	recorders := []recorder.ChainLink{recorder.MetricFilter(conf.Metrics...)}
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: conf.LogLevel}))
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 
 	if conf.MetricsAddr != "" {
 		prometheus, err := recorder.NewPrometheus(conf.MetricsAddr, log)
 		if err != nil {
-			log.Error(err.Error())
-			os.Exit(1)
+			return err
 		}
 		group = append(group, prometheus)
 		recorders = append(recorders, prometheus.DefaultRecorders()...)
 	}
 
-	p, err := peer.NewPeer(
-		peer.WithID(conf.PeerID),
-		peer.WithLogger(log),
-		peer.WithRecorders(recorders...),
+	chain := recorder.Chain(recorders...)
+
+	peer, err := p2platency.NewPeer(
+		p2platency.WithID(conf.PeerID),
+		p2platency.WithListenAddress(conf.LatencyListenAddr),
+		p2platency.WithSendAddresses(conf.LatencySendAddrs...),
+		p2platency.WithInterval(conf.LatencyInterval),
+		p2platency.WithRecorder(chain),
+		p2platency.WithLog(log),
 	)
 	if err != nil {
-		log.Error(err.Error())
-		os.Exit(1)
+		return err
 	}
+	group = append(group, peer)
 
-	if len(conf.SendAddrs) != 0 {
-		for _, addr := range conf.SendAddrs {
-			c, err := comms.NewClient(addr, p, conf.Interval, log)
-			if err != nil {
-				log.Error(err.Error())
-				os.Exit(1)
-			}
-			group = append(group, c)
-		}
-	}
-
-	if conf.ListenAddr != "" {
-		s, err := comms.NewServer(conf.ListenAddr, p, log)
+	for _, addr := range conf.TraceSendAddrs {
+		traceRouteSampler, err := traceroute.NewTraceRoute(
+			traceroute.WithID(conf.PeerID),
+			traceroute.WithAddress(addr),
+			traceroute.WithInterval(conf.TraceInterval),
+			traceroute.WithMaxHops(conf.TraceMaxHops),
+			traceroute.WithRecorder(chain),
+			traceroute.WithLog(log),
+		)
 		if err != nil {
-			log.Error(err.Error())
-			os.Exit(1)
+			return err
 		}
-		group = append(group, s)
+		group = append(group, traceRouteSampler)
 	}
 
 	if err := group.Run(ctx, shutdownTimeout, exitSignals...); err != nil {
-		log.Error(err.Error())
-		os.Exit(1)
+		return err
 	}
+
+	return nil
 }

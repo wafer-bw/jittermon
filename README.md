@@ -29,9 +29,19 @@ docker compose -f demo/docker-compose-fly.yml down
   costs $2/mo.
 
 ## TODOs
-- route tracing over ICMP
+- add a way to request samplers by name
+- consider contractually ensuring samplers emit samples, and conform to a common
+  `Sampler` interface.
+- handle src/dst id/address confusion
+- back off send rate when failing
+- should `jitter.minSamples` be 3?
+- route tracing
+  - hop filtering in grafana
+  - more useful visualizations
+- persist loki data locally
+- promote samplers out of internal
 - long term nice to have
-  - add tracing via otel
+  - add code tracing via otel
     - collect traces in grafana via mimir
   - make checks workflow only runs when go code changes
   - Use ICMP for RTT?

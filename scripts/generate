@@ -4,5 +4,6 @@ set -e
 
 PREFIX="github.com/wafer-bw/jittermon"
 
-protoc -I . --go_out=. --go_opt=default_api_level=API_OPAQUE --go_opt=module=$PREFIX --go-grpc_out=. --go-grpc_opt=default_api_level=API_OPAQUE --go-grpc_opt=module=$PREFIX ./api/*/*.proto
-# protoc -I . --go_out=. --go_opt=default_api_level=API_OPAQUE --go_opt=module=$PREFIX --go-grpc_out=. --go-grpc_opt=default_api_level=API_OPAQUE --go-grpc_opt=module=$PREFIX ./api/*/common/*/*.proto
+protoc -I . --go_out=. --go_opt=default_api_level=API_OPAQUE --go_opt=module=$PREFIX --go-grpc_out=. --go-grpc_opt=default_api_level=API_OPAQUE --go-grpc_opt=module=$PREFIX ./internal/sampler/p2platency/internal/grpcpeer/proto/*.proto
+
+go generate ./...

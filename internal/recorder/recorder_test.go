@@ -8,6 +8,44 @@ import (
 	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
+func TestLabels_Keys(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns the keys of the labels", func(t *testing.T) {
+		t.Parallel()
+
+		l := recorder.Labels{
+			{K: "foo", V: "bar"},
+			{K: "baz", V: "qux"},
+		}
+
+		keys := l.Keys()
+
+		require.Len(t, keys, 2)
+		require.Contains(t, keys, "foo")
+		require.Contains(t, keys, "baz")
+	})
+}
+
+func TestLabels_Values(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns the values of the labels", func(t *testing.T) {
+		t.Parallel()
+
+		l := recorder.Labels{
+			{K: "foo", V: "bar"},
+			{K: "baz", V: "qux"},
+		}
+
+		values := l.Values()
+
+		require.Len(t, values, 2)
+		require.Contains(t, values, "bar")
+		require.Contains(t, values, "qux")
+	})
+}
+
 func TestChain(t *testing.T) {
 	t.Parallel()
 
@@ -59,5 +97,13 @@ func TestChain(t *testing.T) {
 			r := recorder.Chain()
 			r.Record(ctx, recorder.Sample{})
 		})
+	})
+}
+
+func TestNoOp(t *testing.T) {
+	t.Parallel()
+
+	require.NotPanics(t, func() {
+		recorder.NoOp.Record(t.Context(), recorder.Sample{})
 	})
 }
