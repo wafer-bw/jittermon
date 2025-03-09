@@ -72,15 +72,14 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	group = append(group, peer)
 
 	for _, addr := range conf.TraceSendAddrs {
-		traceRouteSampler, err := traceroute.NewTraceRoute(traceroute.TraceRouteOptions{
-			ID:       conf.PeerID,
-			Address:  addr,
-			MaxHops:  conf.TraceMaxHops,
-			Timeout:  conf.TraceInterval,
-			Interval: conf.TraceInterval,
-			Recorder: chain,
-			Log:      log,
-		})
+		traceRouteSampler, err := traceroute.NewTraceRoute(
+			traceroute.WithID(conf.PeerID),
+			traceroute.WithAddress(addr),
+			traceroute.WithInterval(conf.TraceInterval),
+			traceroute.WithMaxHops(conf.TraceMaxHops),
+			traceroute.WithRecorder(chain),
+			traceroute.WithLog(log),
+		)
 		if err != nil {
 			return err
 		}

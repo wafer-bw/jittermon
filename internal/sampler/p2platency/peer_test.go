@@ -1,16 +1,22 @@
 package p2platency_test
 
+//go:generate go run go.uber.org/mock/mockgen -source=peer.go -destination=peer_mocks_test.go -package=p2platency_test
+
 import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
+	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc"
 )
 
@@ -122,29 +128,33 @@ func TestNewPeer(t *testing.T) {
 func TestPeer_Start(t *testing.T) {
 	t.Parallel()
 
-	t.Run("successfully starts peer group exiting after context ends", func(t *testing.T) {
+	t.Run("successfully starts peer", func(t *testing.T) {
 		t.Parallel()
 
 		ctx, cancel := context.WithCancel(t.Context())
+		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		p, err := p2platency.NewPeer()
+		ports, err := freeport.GetFreePorts(3)
 		require.NoError(t, err)
 
-		started := false
-		p.SetGroup(graceful.Group{
-			graceful.RunnerType{
-				StartFunc: func(context.Context) error {
-					started = true
-					cancel()
-					return nil
-				},
-			},
-		})
+		p, err := p2platency.NewPeer(
+			p2platency.WithListenAddress(net.JoinHostPort("localhost", strconv.Itoa(ports[0]))),
+			p2platency.WithSendAddresses(
+				net.JoinHostPort("localhost", strconv.Itoa(ports[1])),
+				net.JoinHostPort("localhost", strconv.Itoa(ports[2])),
+			),
+			p2platency.WithRecorder(mockRecorder),
+			p2platency.WithInterval(10*time.Millisecond),
+		)
+		require.NoError(t, err)
+
+		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(context.Context, recorder.Sample) {
+			cancel()
+		}).AnyTimes()
 
 		err = p.Start(ctx)
 		require.Error(t, err)
 		require.ErrorIs(t, err, context.Canceled)
-		require.True(t, started)
 	})
 }
 

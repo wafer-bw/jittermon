@@ -279,7 +279,7 @@ func TestClient_Stop(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("stop fails when context is closed", func(t *testing.T) {
+	t.Run("fails when context is closed", func(t *testing.T) {
 		t.Parallel()
 
 		ctx, cancel := context.WithCancel(t.Context())

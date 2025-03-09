@@ -171,6 +171,7 @@ func NewPeer(options ...Option) (*Peer, error) {
 			ClientOptions: p.grpc.ClientOptions,
 			Log:           p.log,
 			StopCh:        make(chan struct{}),
+			StoppedCh:     make(chan struct{}),
 		}
 		p.group = append(p.group, client)
 	}
@@ -185,6 +186,7 @@ func NewPeer(options ...Option) (*Peer, error) {
 			Recorder:                p.recorder,
 			RequestBuffers:          jitter.NewHostPacketBuffers(),
 			Log:                     p.log,
+			StartedCh:               make(chan struct{}),
 			StoppedCh:               make(chan struct{}),
 		}
 		p.group = append(p.group, server)

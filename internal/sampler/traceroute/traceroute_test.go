@@ -126,6 +126,70 @@ func TestNewTraceRoute(t *testing.T) {
 	})
 }
 
+func TestTraceRoute_Trace(t *testing.T) {
+	t.Parallel()
+
+	t.Run("successfully traces route", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		mockTracer := NewMockTracer(gomock.NewController(t))
+		mockRecorder := NewMockRecorder(gomock.NewController(t))
+		hops := traceroute.Hops{
+			{Addr: "192.168.1.1", Name: "192.168.1.1", Hop: 1, RTT: ptr(2 * time.Millisecond)},
+			{Addr: "1.1.1.1", Name: "something.example.com", Hop: 2, RTT: ptr(4 * time.Millisecond)},
+		}
+
+		tr, err := traceroute.NewTraceRoute(
+			traceroute.WithInterval(10*time.Millisecond),
+			traceroute.WithRecorder(mockRecorder),
+		)
+		require.NoError(t, err)
+
+		tr.SetTracer(mockTracer)
+
+		mockTracer.EXPECT().Trace(gomock.Any(), tr.GetAddress()).Return(hops, nil).Times(1)
+		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(_ context.Context, sample recorder.Sample) {
+			require.Equal(t, recorder.SampleTypeHopRTT, sample.Type)
+			v, ok := sample.Val.(*time.Duration)
+			require.True(t, ok)
+			require.NotNil(t, v)
+			require.Equal(t, 2*time.Millisecond, *v)
+		}).Times(1)
+		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(_ context.Context, sample recorder.Sample) {
+			require.Equal(t, recorder.SampleTypeHopRTT, sample.Type)
+			v, ok := sample.Val.(*time.Duration)
+			require.True(t, ok)
+			require.NotNil(t, v)
+			require.Equal(t, 4*time.Millisecond, *v)
+		}).Times(1)
+
+		err = tr.Trace(ctx)
+		require.NoError(t, err)
+	})
+
+	t.Run("fails when underlying tracer fails", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		mockTracer := NewMockTracer(gomock.NewController(t))
+		mockRecorder := NewMockRecorder(gomock.NewController(t))
+
+		tr, err := traceroute.NewTraceRoute(
+			traceroute.WithInterval(10*time.Millisecond),
+			traceroute.WithRecorder(mockRecorder),
+		)
+		require.NoError(t, err)
+
+		tr.SetTracer(mockTracer)
+
+		mockTracer.EXPECT().Trace(gomock.Any(), tr.GetAddress()).Return(nil, errors.New("error")).Times(1)
+
+		err = tr.Trace(ctx)
+		require.Error(t, err)
+	})
+}
+
 func TestTraceRoute_Start(t *testing.T) {
 	t.Parallel()
 
@@ -178,6 +242,38 @@ func TestTraceRoute_Start(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tr.Start(ctx)
+		require.Error(t, err)
+		require.ErrorIs(t, err, context.Canceled)
+	})
+}
+
+func TestTraceRoute_Stop(t *testing.T) {
+	t.Parallel()
+
+	t.Run("successful stop when stopped channel is closed", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		tr, err := traceroute.NewTraceRoute()
+		require.NoError(t, err)
+
+		close(tr.GetStoppedCh())
+
+		err = tr.Stop(ctx)
+		require.NoError(t, err)
+	})
+
+	t.Run("fails when context is closed", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		tr, err := traceroute.NewTraceRoute()
+		require.NoError(t, err)
+
+		err = tr.Stop(ctx)
 		require.Error(t, err)
 		require.ErrorIs(t, err, context.Canceled)
 	})

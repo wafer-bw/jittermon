@@ -17,11 +17,11 @@ func TestExecTracer_Trace(t *testing.T) {
 
 		ctx := t.Context()
 		expectedHops := traceroute.Hops{
-			{Addr: "192.168.1.1", Name: "192.168.1.1", Hop: 1, RTT: ptr(time.Microsecond * 828)},
-			{Addr: "1.1.1.1", Name: "something.example.com", Hop: 2, RTT: ptr(time.Microsecond * 14177)},
+			{Addr: "192.168.1.1", Name: "192.168.1.1", Hop: 1, RTT: ptr(828 * time.Microsecond)},
+			{Addr: "1.1.1.1", Name: "something.example.com", Hop: 2, RTT: ptr(14177 * time.Microsecond)},
 			{Addr: "*", Name: "*", Hop: 3, RTT: nil},
-			{Addr: "3.3.3.3", Name: "somethingelse.example.com", Hop: 4, RTT: ptr(time.Microsecond * 12981)},
-			{Addr: "8.8.8.8", Name: "dns.google", Hop: 5, RTT: ptr(time.Microsecond * 12849)},
+			{Addr: "3.3.3.3", Name: "somethingelse.example.com", Hop: 4, RTT: ptr(12981 * time.Microsecond)},
+			{Addr: "8.8.8.8", Name: "dns.google", Hop: 5, RTT: ptr(12849 * time.Microsecond)},
 		}
 		execfn := func(name string, args ...string) (string, error) {
 			require.Equal(t, "-q", args[0])

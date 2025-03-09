@@ -44,3 +44,8 @@ func (tr TraceRoute) GetMaxHops() int {
 func (tr TraceRoute) GetStopCh() chan struct{} {
 	return tr.stopCh
 }
+
+// export for testing.
+func (tr TraceRoute) GetStoppedCh() chan struct{} {
+	return tr.stoppedCh
+}
