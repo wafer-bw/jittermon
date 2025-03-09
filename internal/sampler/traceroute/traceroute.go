@@ -125,6 +125,9 @@ func NewTraceRoute(options ...Option) (*TraceRoute, error) {
 }
 
 func (tr TraceRoute) Start(ctx context.Context) error {
+	tr.log = tr.log.With("id", tr.id, "name", SamplerName, "address", tr.address)
+	tr.log.Info("starting")
+
 	defer close(tr.stoppedCh)
 
 	ticker := time.NewTicker(tr.interval)

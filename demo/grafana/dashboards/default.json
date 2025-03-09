@@ -190,7 +190,7 @@
         ]
       },
       "gridPos": {
-        "h": 16,
+        "h": 13,
         "w": 24,
         "x": 0,
         "y": 0
@@ -341,10 +341,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 14,
+        "h": 10,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 13
       },
       "id": 4,
       "options": {
@@ -504,7 +504,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 30
+        "y": 23
       },
       "id": 3,
       "options": {
@@ -551,7 +551,7 @@
         "h": 7,
         "w": 18,
         "x": 6,
-        "y": 30
+        "y": 23
       },
       "id": 2,
       "options": {
@@ -610,6 +610,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 35,
+  "version": 37,
   "weekStart": ""
 }
