@@ -14,8 +14,6 @@ docker compose -f demo/docker-compose-local.yml down
 ```
 
 ```sh
-# build docker image
-docker build -t jittermon .
 # deploy to fly
 fly deploy
 # start the demo
@@ -29,6 +27,21 @@ docker compose -f demo/docker-compose-fly.yml down
   costs $2/mo.
 
 ## TODOs
+
+### Refactor
+  - collapse p2platency peer and grpcpeer into one
+    - can implement a separate httppeer instead of having layers of abstraction
+  - improve unit testability by having samplers emit samples to a channel
+    - any type that emits samples should satisfy a specific interface for it
+  - simplify recorder interface by using interface assertion to
+    - determine sample type
+    - determine labels
+    - determine timestamp
+    - (no longer need `Sample` or `SampleType`)
+  - move logger into context
+
+### Misc
+- add contextual log handler for common attributes
 - add a way to request samplers by name
 - consider contractually ensuring samplers emit samples, and conform to a common
   `Sampler` interface.
