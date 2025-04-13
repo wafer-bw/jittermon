@@ -1,4 +1,4 @@
-// Package jitter implements https://datatracker.ietf.org/doc/html/rfc3550#section-6.4.1
+// Package jitter implements interarrival jitter as per RFC3550 Section 6.4.1
 package jitter
 
 import (
@@ -8,81 +8,75 @@ import (
 
 const (
 	minSamples int   = 2
-	gain       int64 = 16
+	gain       int64 = 16 // https://datatracker.ietf.org/doc/html/rfc3550#ref-22
 )
 
-type Packet struct {
-	S time.Time
-	R time.Time
-	j time.Duration
+type packet struct {
+	sentAt             time.Time
+	receivedAt         time.Time
+	interarrivalJitter time.Duration
 }
 
-type HostPacketBuffers struct {
-	mu   *sync.RWMutex
-	data map[string]packetBuffer
+// Buffer allows sampling jitter for multiple peers concurrently.
+//
+// This type embeds a non-pointer mutex so it can be used without a constructor,
+// so when you use this type make sure to use it as a pointer like:
+//
+//	buffer := &jitter.Buffer{}
+type Buffer struct {
+	mu   sync.RWMutex
+	data map[string][]packet
 }
 
-func NewHostPacketBuffers() HostPacketBuffers {
-	return HostPacketBuffers{
-		mu:   &sync.RWMutex{},
-		data: map[string]packetBuffer{},
-	}
-}
-
-func (b HostPacketBuffers) Jitter(hostID string) (time.Duration, bool) {
+// Interarrival jitter for a peer calculated using the sent and received time of
+// an incoming packet calculated as per RFC3550 Section 6.4.1:
+// https://datatracker.ietf.org/doc/html/rfc3550#section-6.4.1
+//
+// This method is thread-safe and can be called concurrently from multiple
+// goroutines.
+func (b *Buffer) Interarrival(pid string, sentAt, receivedAt time.Time) (time.Duration, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	buffer, ok := b.data[hostID]
-	if !ok {
+	p := packet{sentAt: sentAt, receivedAt: receivedAt}
+
+	// lazy initialization of map so we don't need a constructor function.
+	if b.data == nil {
+		b.data = map[string][]packet{}
+	}
+
+	packets := b.data[pid]         // get peer packets
+	packets = append(packets, p)   // add new packet
+	if len(packets) > minSamples { // remove oldest packet
+		packets = packets[1:]
+	}
+
+	// make sure we update the map with the new packet slice, this must happen
+	// before any return from this function so we defer it.
+	defer func() { b.data[pid] = packets }()
+
+	if len(packets) < minSamples { // not enough samples yet
 		return 0, false
 	}
 
-	return buffer.jitter()
-}
+	// name vars as per RFC3550 so it's easy to read in a mathematical context.
+	i := packets[1] // current packet
+	j := packets[0] // previous packet (i-1)
+	Jj := j.interarrivalJitter
+	Ri, Rj := i.receivedAt, j.receivedAt
+	Si, Sj := i.sentAt, j.sentAt
 
-// TODO: instead of accepting a packet type, just accept the properties needed
-// as args.
-// TODO: potentially combine with Jitter method.
-func (b HostPacketBuffers) Sample(hostID string, e Packet) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	buffer := b.data[hostID] // get host packet buffer or new buffer if not exists
-	buffer.push(e)           // push new packet to buffer
-	b.data[hostID] = buffer  // update host buffer
-}
-
-type packetBuffer []Packet
-
-func (pb *packetBuffer) jitter() (time.Duration, bool) {
-	if len(*pb) < minSamples {
-		return 0, false
-	}
-
-	i, j := (*pb)[1], (*pb)[0]
-	Ri, Rj := i.R, j.R
-	Si, Sj := i.S, j.S
-	Jj := j.j
-
-	// Relative transit time difference:
+	// relative transit time difference:
 	// D(i,j) = (Rj - Ri) - (Sj - Si) = (Rj - Sj) - (Ri - Si)
-	// DiJ = (Rj - Sj) - (Ri - Si)
+	// Dij = (Rj - Sj) - (Ri - Si)
 	Dij := (Rj.Sub(Ri) - (Sj.Sub(Si)))
 
-	// Interarrival jitter:
+	// interarrival jitter:
 	// J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16
 	// J(i) = Jj + (|Dij| - Jj)/16
 	Ji := Jj + (Dij.Abs()-Jj)/time.Duration(gain)
-	(*pb)[1].j = Ji
+
+	packets[1].interarrivalJitter = Ji
 
 	return Ji, true
-}
-
-func (b *packetBuffer) push(e Packet) {
-	// shift current packet to previous packet; set new packet as current packet
-	*b = append(*b, e)
-	if len(*b) > minSamples {
-		*b = (*b)[1:]
-	}
 }

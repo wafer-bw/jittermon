@@ -132,7 +132,7 @@ type Server struct {
 	ServerOptions           []grpc.ServerOption
 	ServerReflectionEnabled bool
 	Recorder                Recorder
-	RequestBuffers          jitter.HostPacketBuffers // TODO: accept interface.
+	RequestBuffers          *jitter.Buffer // TODO: accept interface.
 	Log                     *slog.Logger
 	StartedCh               chan struct{}
 	StoppedCh               chan struct{}
@@ -158,8 +158,7 @@ func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.Poll
 	}
 	sentAt := sentAtPb.AsTime()
 
-	s.RequestBuffers.Sample(srcID, jitter.Packet{S: sentAt, R: now})
-	jitter, ok := s.RequestBuffers.Jitter(srcID)
+	jitter, ok := s.RequestBuffers.Interarrival(srcID, sentAt, now)
 	if !ok {
 		return resp, nil
 	}

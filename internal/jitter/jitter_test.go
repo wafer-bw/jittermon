@@ -8,7 +8,7 @@ import (
 	"github.com/wafer-bw/jittermon/internal/jitter"
 )
 
-func TestHostPacketBuffers_Jitter(t *testing.T) {
+func TestBuffer_Interarrival(t *testing.T) {
 	t.Parallel()
 
 	t.Run("populates buffer & measures zero jitter", func(t *testing.T) {
@@ -16,41 +16,28 @@ func TestHostPacketBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.NewHostPacketBuffers()
+		b := jitter.Buffer{}
 
-		b.Sample(pid, jitter.Packet{
-			S: now,
-			R: now.Add(50 * time.Millisecond),
-		})
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(1 * time.Second),
-			R: now.Add(1*time.Second + 50*time.Millisecond),
-		})
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(2 * time.Second),
-			R: now.Add(2*time.Second + 50*time.Millisecond),
-		})
-
-		require.Equal(t, 1, b.Len())
-		require.Equal(t, 2, b.HostBufferLen(pid))
-
-		jitter, ok := b.Jitter(pid)
+		_, _ = b.Interarrival(pid, now, now.Add(50*time.Millisecond))
+		_, _ = b.Interarrival(pid, now.Add(1*time.Second), now.Add(1*time.Second+50*time.Millisecond))
+		j, ok := b.Interarrival(pid, now.Add(2*time.Second), now.Add(2*time.Second+50*time.Millisecond))
 		require.True(t, ok)
-		require.Equal(t, time.Duration(0), jitter)
+		require.Equal(t, time.Duration(0), j)
+		require.Equal(t, 1, b.Len())
+		require.Equal(t, 2, b.PeerBufferLen(pid))
 	})
 
 	t.Run("handles sampling via multiple threads safely", func(t *testing.T) {
 		t.Parallel()
 
 		pid := "1"
-		b := jitter.NewHostPacketBuffers()
+		b := jitter.Buffer{}
 
-		for range 1000 {
-			go b.Sample(pid, jitter.Packet{
-				S: time.Now(),
-				R: time.Now().Add(50 * time.Millisecond),
-			})
-		}
+		require.NotPanics(t, func() {
+			for range 1000 {
+				go b.Interarrival(pid, time.Now(), time.Now().Add(50*time.Millisecond))
+			}
+		})
 	})
 
 	t.Run("measures delayed jitter", func(t *testing.T) {
@@ -58,18 +45,10 @@ func TestHostPacketBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.NewHostPacketBuffers()
+		b := jitter.Buffer{}
 
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(1 * time.Second),
-			R: now.Add(1*time.Second + 50*time.Millisecond),
-		})
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(2 * time.Second),
-			R: now.Add(2*time.Second + 60*time.Millisecond),
-		})
-
-		jitter, ok := b.Jitter(pid)
+		_, _ = b.Interarrival(pid, now.Add(1*time.Second), now.Add(1*time.Second+50*time.Millisecond))
+		jitter, ok := b.Interarrival(pid, now.Add(2*time.Second), now.Add(2*time.Second+60*time.Millisecond))
 		require.True(t, ok)
 		require.Equal(t, 625*time.Microsecond, jitter)
 	})
@@ -79,18 +58,10 @@ func TestHostPacketBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.NewHostPacketBuffers()
+		b := jitter.Buffer{}
 
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(1 * time.Second),
-			R: now.Add(1*time.Second + 50*time.Millisecond),
-		})
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(2 * time.Second),
-			R: now.Add(2*time.Second + 40*time.Millisecond),
-		})
-
-		jitter, ok := b.Jitter(pid)
+		_, _ = b.Interarrival(pid, now.Add(1*time.Second), now.Add(1*time.Second+50*time.Millisecond))
+		jitter, ok := b.Interarrival(pid, now.Add(2*time.Second), now.Add(2*time.Second+40*time.Millisecond))
 		require.True(t, ok)
 		require.Equal(t, 625*time.Microsecond, jitter)
 	})
@@ -100,18 +71,10 @@ func TestHostPacketBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.NewHostPacketBuffers()
+		b := jitter.Buffer{}
 
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(1 * time.Second),
-			R: now.Add(1*time.Second + 50*time.Millisecond),
-		})
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(2*time.Second + 5*time.Millisecond),
-			R: now.Add(2*time.Second + 60*time.Millisecond),
-		})
-
-		jitter, ok := b.Jitter(pid)
+		_, _ = b.Interarrival(pid, now.Add(1*time.Second), now.Add(1*time.Second+50*time.Millisecond))
+		jitter, ok := b.Interarrival(pid, now.Add(2*time.Second+5*time.Millisecond), now.Add(2*time.Second+60*time.Millisecond))
 		require.True(t, ok)
 		require.Equal(t, 312500*time.Nanosecond, jitter)
 	})
@@ -121,18 +84,10 @@ func TestHostPacketBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.NewHostPacketBuffers()
+		b := jitter.Buffer{}
 
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(1 * time.Second),
-			R: now.Add(1*time.Second + 50*time.Millisecond),
-		})
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(2*time.Second - 5*time.Millisecond),
-			R: now.Add(2*time.Second + 40*time.Millisecond),
-		})
-
-		jitter, ok := b.Jitter(pid)
+		_, _ = b.Interarrival(pid, now.Add(1*time.Second), now.Add(1*time.Second+50*time.Millisecond))
+		jitter, ok := b.Interarrival(pid, now.Add(2*time.Second-5*time.Millisecond), now.Add(2*time.Second+40*time.Millisecond))
 		require.True(t, ok)
 		require.Equal(t, 312500*time.Nanosecond, jitter)
 	})
@@ -142,18 +97,10 @@ func TestHostPacketBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.NewHostPacketBuffers()
+		b := jitter.Buffer{}
 
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(1 * time.Second),
-			R: now.Add(1*time.Second + 50*time.Millisecond),
-		})
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(2*time.Second - 5*time.Millisecond),
-			R: now.Add(2*time.Second + 60*time.Millisecond),
-		})
-
-		jitter, ok := b.Jitter(pid)
+		_, _ = b.Interarrival(pid, now.Add(1*time.Second), now.Add(1*time.Second+50*time.Millisecond))
+		jitter, ok := b.Interarrival(pid, now.Add(2*time.Second-5*time.Millisecond), now.Add(2*time.Second+60*time.Millisecond))
 		require.True(t, ok)
 		require.Equal(t, 937500*time.Nanosecond, jitter)
 	})
@@ -163,18 +110,10 @@ func TestHostPacketBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.NewHostPacketBuffers()
+		b := jitter.Buffer{}
 
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(1 * time.Second),
-			R: now.Add(1*time.Second + 50*time.Millisecond),
-		})
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(2*time.Second + 5*time.Millisecond),
-			R: now.Add(2*time.Second + 40*time.Millisecond),
-		})
-
-		jitter, ok := b.Jitter(pid)
+		_, _ = b.Interarrival(pid, now.Add(1*time.Second), now.Add(1*time.Second+50*time.Millisecond))
+		jitter, ok := b.Interarrival(pid, now.Add(2*time.Second+5*time.Millisecond), now.Add(2*time.Second+40*time.Millisecond))
 		require.True(t, ok)
 		require.Equal(t, 937500*time.Nanosecond, jitter)
 	})
@@ -184,25 +123,12 @@ func TestHostPacketBuffers_Jitter(t *testing.T) {
 
 		pid := "1"
 		now := time.Now()
-		b := jitter.NewHostPacketBuffers()
+		b := jitter.Buffer{}
 
-		_, ok := b.Jitter(pid)
+		_, ok := b.Interarrival(pid, now, now.Add(50*time.Millisecond))
 		require.False(t, ok)
 
-		b.Sample(pid, jitter.Packet{
-			S: now,
-			R: now.Add(50 * time.Millisecond),
-		})
-
-		_, ok = b.Jitter(pid)
-		require.False(t, ok)
-
-		b.Sample(pid, jitter.Packet{
-			S: now.Add(1 * time.Second),
-			R: now.Add(1*time.Second + 50*time.Millisecond),
-		})
-
-		_, ok = b.Jitter(pid)
+		_, ok = b.Interarrival(pid, now, now.Add(50*time.Millisecond))
 		require.True(t, ok)
 	})
 }

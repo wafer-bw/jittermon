@@ -184,7 +184,7 @@ func NewPeer(options ...Option) (*Peer, error) {
 			ServerOptions:           p.grpc.ServerOptions,
 			ServerReflectionEnabled: p.grpc.Reflection,
 			Recorder:                p.recorder,
-			RequestBuffers:          jitter.NewHostPacketBuffers(),
+			RequestBuffers:          &jitter.Buffer{},
 			Log:                     p.log,
 			StartedCh:               make(chan struct{}),
 			StoppedCh:               make(chan struct{}),

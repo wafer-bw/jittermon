@@ -1,7 +1,7 @@
 package jitter
 
 // export for testing.
-func (b HostPacketBuffers) Len() int {
+func (b *Buffer) Len() int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
@@ -9,7 +9,7 @@ func (b HostPacketBuffers) Len() int {
 }
 
 // export for testing.
-func (b HostPacketBuffers) HostBufferLen(host string) int {
+func (b *Buffer) PeerBufferLen(host string) int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
