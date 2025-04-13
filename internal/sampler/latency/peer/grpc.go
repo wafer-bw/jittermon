@@ -1,6 +1,4 @@
-// TODO: move to just sampler/p2platency(v2)
-// TODO: remove v2 and delete old impl.
-package grpcpeer
+package peer
 
 import (
 	"context"
@@ -10,9 +8,8 @@ import (
 	"time"
 
 	"github.com/wafer-bw/jittermon/internal/jitter"
-	"github.com/wafer-bw/jittermon/internal/recorder"
 	rec "github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/sampler/p2platencyv2/internal/grpcpeer/pollpb"
+	"github.com/wafer-bw/jittermon/internal/sampler/latency/peer/internal/pollpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -20,33 +17,31 @@ import (
 )
 
 const (
-	RecommendedClientChannelBufferSize int = 6
-	RecommendedServerChannelBufferSize int = 2
-)
-
-const (
 	grpcClientName string = "grpc_p2platency_client"
 	grpcServerName string = "grpc_p2platency_server"
 )
 
-type ClientPoller interface {
+type Recorder interface {
+	rec.Recorder
+}
+
+type GRPCClientPoller interface {
 	pollpb.PollServiceClient
 }
 
-// TODO: use constructor accepting functional options.
-type Client struct {
+type GRPCClient struct {
 	ID            string
 	Address       string
 	Interval      time.Duration
+	Recorder      Recorder
 	ClientOptions []grpc.DialOption
 	Log           *slog.Logger
 	StopCh        chan struct{}
 	StoppedCh     chan struct{}
-	SampleCh      chan recorder.Sample
-	Client        ClientPoller
+	Client        GRPCClientPoller
 }
 
-func (c Client) Poll(ctx context.Context) error {
+func (c GRPCClient) Poll(ctx context.Context) error {
 	start := time.Now()
 	labels := rec.Labels{{K: "src", V: c.ID}, {K: "dst", V: c.Address}}
 
@@ -54,10 +49,10 @@ func (c Client) Poll(ctx context.Context) error {
 	req.SetId(c.ID)
 	req.SetTimestamp(timestamppb.New(start))
 
-	c.SampleCh <- rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: struct{}{}, Labels: labels}
+	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
 	rsp, err := c.Client.Poll(ctx, req)
 	if err != nil {
-		c.SampleCh <- rec.Sample{Time: start, Type: rec.SampleTypeLostPackets, Val: struct{}{}, Labels: labels}
+		c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeLostPackets, Val: struct{}{}, Labels: labels})
 		c.Log.Error("poll failed", "err", err)
 		return err
 	}
@@ -77,13 +72,13 @@ func (c Client) Poll(ctx context.Context) error {
 	}
 	jit := jitterPb.AsDuration()
 
-	c.SampleCh <- rec.Sample{Time: start, Type: rec.SampleTypeUpstreamJitter, Val: jit, Labels: labels}
-	c.SampleCh <- rec.Sample{Time: start, Type: rec.SampleTypeRTT, Val: rtt, Labels: labels}
+	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeUpstreamJitter, Val: jit, Labels: labels})
+	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeRTT, Val: rtt, Labels: labels})
 
 	return nil
 }
 
-func (c *Client) Start(ctx context.Context) error {
+func (c *GRPCClient) Start(ctx context.Context) error {
 	c.Log = c.Log.With("id", c.ID, "name", grpcClientName, "address", c.Address)
 	c.Log.Info("starting")
 
@@ -105,7 +100,7 @@ func (c *Client) Start(ctx context.Context) error {
 		select {
 		case <-ticker.C:
 			if err := c.Poll(ctx); err != nil {
-				c.Log.Warn("poll failed", "err", err)
+				c.Log.Warn("do poll failed", "err", err)
 				continue
 			}
 		case <-ctx.Done():
@@ -116,10 +111,9 @@ func (c *Client) Start(ctx context.Context) error {
 	}
 }
 
-func (c *Client) Stop(ctx context.Context) error {
+func (c *GRPCClient) Stop(ctx context.Context) error {
 	c.Log.Debug("stopping")
 
-	defer close(c.SampleCh)
 	close(c.StopCh)
 
 	select {
@@ -130,31 +124,24 @@ func (c *Client) Stop(ctx context.Context) error {
 	}
 }
 
-func (c Client) Samples() <-chan recorder.Sample {
-	return c.SampleCh
-}
-
-// TODO: private emit function that emits samples if they have been enabled.
-// this will allow default behavior to not block on sample emission to sampleCh.
-
-// TODO: use constructor accepting functional options.
-type Server struct {
+type GRPCServer struct {
 	ID                      string
 	Address                 string
 	Proto                   string
 	ServerOptions           []grpc.ServerOption
 	ServerReflectionEnabled bool
+	Recorder                Recorder
 	RequestBuffers          *jitter.Buffer // TODO: accept interface.
 	Log                     *slog.Logger
 	StartedCh               chan struct{}
 	StoppedCh               chan struct{}
-	SampleCh                chan recorder.Sample
-	Server                  *grpc.Server
+
+	Server *grpc.Server
 
 	pollpb.UnimplementedPollServiceServer
 }
 
-func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
+func (s GRPCServer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
 	now := time.Now()
 	resp := &pollpb.PollResponse{}
 	resp.SetId(s.ID)
@@ -177,12 +164,12 @@ func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.Poll
 	resp.SetJitter(durationpb.New(jitter))
 
 	labels := rec.Labels{{K: "src", V: srcID}, {K: "dst", V: s.ID}}
-	s.SampleCh <- rec.Sample{Time: now, Type: rec.SampleTypeDownstreamJitter, Val: jitter, Labels: labels}
+	s.Recorder.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeDownstreamJitter, Val: jitter, Labels: labels})
 
 	return resp, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
+func (s *GRPCServer) Start(ctx context.Context) error {
 	s.Log = s.Log.With("id", s.ID, "name", grpcServerName, "address", s.Address)
 	s.Log.Info("starting")
 
@@ -199,17 +186,15 @@ func (s *Server) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close() // TODO: maybe close this in [Stop] and capture err?
+	defer listener.Close()
 
 	close(s.StartedCh)
 
 	return s.Server.Serve(listener)
 }
 
-func (s *Server) Stop(ctx context.Context) error {
+func (s *GRPCServer) Stop(ctx context.Context) error {
 	s.Log.Debug("stopping")
-
-	defer close(s.SampleCh)
 
 	gracefullyStoppedCh := make(chan struct{})
 	go func() {
@@ -232,10 +217,3 @@ func (s *Server) Stop(ctx context.Context) error {
 		return fmt.Errorf("graceful stop of %s[%s] failed: %w", grpcServerName, s.ID, ctx.Err())
 	}
 }
-
-func (s Server) Samples() <-chan recorder.Sample {
-	return s.SampleCh
-}
-
-// TODO: private emit function that emits samples if they have been enabled.
-// this will allow default behavior to not block on sample emission to sampleCh.

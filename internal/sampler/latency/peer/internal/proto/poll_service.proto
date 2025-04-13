@@ -1,0 +1,12 @@
+edition = "2023";
+
+package poll;
+
+import "internal/sampler/latency/peer/internal/proto/poll_request.proto";
+import "internal/sampler/latency/peer/internal/proto/poll_response.proto";
+
+option go_package = "github.com/wafer-bw/jittermon/internal/sampler/latency/peer/internal/pollpb";
+
+service PollService {
+  rpc Poll(PollRequest) returns (PollResponse) {}
+}

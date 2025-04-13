@@ -1,6 +1,6 @@
-package grpcpeer_test
+package peer_test
 
-//go:generate go run go.uber.org/mock/mockgen -source=grpc.go -destination=grpc_mocks_test.go -package=grpcpeer_test
+//go:generate go run go.uber.org/mock/mockgen -source=grpc.go -destination=grpc_mocks_test.go -package=peer_test
 
 import (
 	"context"
@@ -14,8 +14,8 @@ import (
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 	rec "github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/grpcpeer"
-	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/grpcpeer/pollpb"
+	"github.com/wafer-bw/jittermon/internal/sampler/latency/peer"
+	"github.com/wafer-bw/jittermon/internal/sampler/latency/peer/internal/pollpb"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -34,10 +34,10 @@ func TestClient_Poll(t *testing.T) {
 		ctx := t.Context()
 		start := time.Now()
 		jitter := 5 * time.Millisecond
-		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockClient := NewMockGRPCClientPoller(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			ID:       "client",
 			Address:  addr,
 			Interval: 1 * time.Second,
@@ -76,10 +76,10 @@ func TestClient_Poll(t *testing.T) {
 
 		ctx := t.Context()
 		jitter := 5 * time.Millisecond
-		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockClient := NewMockGRPCClientPoller(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			ID:       "client",
 			Address:  addr,
 			Interval: 1 * time.Second,
@@ -111,10 +111,10 @@ func TestClient_Poll(t *testing.T) {
 
 		ctx := t.Context()
 		jitter := 5 * time.Millisecond
-		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockClient := NewMockGRPCClientPoller(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			ID:       "client",
 			Address:  addr,
 			Interval: 1 * time.Second,
@@ -137,10 +137,10 @@ func TestClient_Poll(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockClient := NewMockGRPCClientPoller(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			ID:       "client",
 			Address:  addr,
 			Interval: 1 * time.Second,
@@ -170,9 +170,9 @@ func TestClient_Start(t *testing.T) {
 
 		ctx := t.Context()
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
-		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockClient := NewMockGRPCClientPoller(gomock.NewController(t))
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			ID:            "client",
 			Address:       addr,
 			Interval:      10 * time.Millisecond,
@@ -199,7 +199,7 @@ func TestClient_Start(t *testing.T) {
 
 		ctx := t.Context()
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			ID:            "client",
 			Address:       addr,
 			Interval:      1 * time.Second,
@@ -222,7 +222,7 @@ func TestClient_Start(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			ID:            "client",
 			Address:       addr,
 			Interval:      1 * time.Second,
@@ -243,7 +243,7 @@ func TestClient_Start(t *testing.T) {
 
 		ctx := t.Context()
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			ID:            "client",
 			Address:       addr,
 			Interval:      1 * time.Second,
@@ -267,7 +267,7 @@ func TestClient_Stop(t *testing.T) {
 
 		ctx := t.Context()
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			Log:       slog.New(slog.DiscardHandler),
 			StopCh:    make(chan struct{}),
 			StoppedCh: make(chan struct{}),
@@ -285,7 +285,7 @@ func TestClient_Stop(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
-		client := &grpcpeer.Client{
+		client := &peer.GRPCClient{
 			Log:       slog.New(slog.DiscardHandler),
 			StopCh:    make(chan struct{}),
 			StoppedCh: make(chan struct{}),
@@ -310,7 +310,7 @@ func TestServer_Poll(t *testing.T) {
 		clientID, serverID := "client", "server"
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		server := &grpcpeer.Server{
+		server := &peer.GRPCServer{
 			ID:             serverID,
 			Address:        addr,
 			Proto:          "tcp",
@@ -355,7 +355,7 @@ func TestServer_Poll(t *testing.T) {
 		start := time.Now()
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		server := &grpcpeer.Server{
+		server := &peer.GRPCServer{
 			ID:             "server",
 			Address:        addr,
 			Proto:          "tcp",
@@ -379,7 +379,7 @@ func TestServer_Poll(t *testing.T) {
 		ctx := t.Context()
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		server := &grpcpeer.Server{
+		server := &peer.GRPCServer{
 			ID:             "server",
 			Address:        addr,
 			Proto:          "tcp",
@@ -406,7 +406,7 @@ func TestServer_Start(t *testing.T) {
 
 		ctx := t.Context()
 
-		server := &grpcpeer.Server{
+		server := &peer.GRPCServer{
 			Proto:                   "tcp",
 			Address:                 "localhost:12346",
 			ServerReflectionEnabled: true,
@@ -435,7 +435,7 @@ func TestServer_Start(t *testing.T) {
 		_, err := net.Listen("", "")
 		require.Error(t, err)
 
-		server := &grpcpeer.Server{
+		server := &peer.GRPCServer{
 			Proto:                   "",
 			Address:                 "",
 			ServerReflectionEnabled: true,
@@ -463,7 +463,7 @@ func TestServer_Stop(t *testing.T) {
 
 		ctx := t.Context()
 
-		server := &grpcpeer.Server{
+		server := &peer.GRPCServer{
 			Log:       slog.New(slog.DiscardHandler),
 			Server:    grpc.NewServer(),
 			StartedCh: make(chan struct{}),
@@ -481,7 +481,7 @@ func TestServer_Stop(t *testing.T) {
 
 		ctx := t.Context()
 
-		server := &grpcpeer.Server{
+		server := &peer.GRPCServer{
 			Log:       slog.New(slog.DiscardHandler),
 			Server:    grpc.NewServer(),
 			StartedCh: make(chan struct{}),
@@ -500,7 +500,7 @@ func TestServer_Stop(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
-		server := &grpcpeer.Server{
+		server := &peer.GRPCServer{
 			Log:       slog.New(slog.DiscardHandler),
 			Server:    grpc.NewServer(),
 			StartedCh: make(chan struct{}),
