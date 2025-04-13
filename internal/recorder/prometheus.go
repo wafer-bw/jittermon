@@ -22,7 +22,6 @@ const (
 type Prometheus struct {
 	log        *slog.Logger
 	mu         *sync.Mutex
-	addr       string
 	server     *http.Server
 	counters   map[string]*prometheus.CounterVec
 	histograms map[string]*prometheus.HistogramVec
@@ -32,9 +31,8 @@ type Prometheus struct {
 // using [Prometheus.Start] and [Prometheus.Stop] respectively.
 func NewPrometheus(addr string, log *slog.Logger) (*Prometheus, error) {
 	r := &Prometheus{
-		mu:   &sync.Mutex{},
-		addr: addr,
-		log:  log,
+		mu:  &sync.Mutex{},
+		log: log,
 	}
 
 	if log == nil {
@@ -42,7 +40,7 @@ func NewPrometheus(addr string, log *slog.Logger) (*Prometheus, error) {
 	}
 
 	r.server = &http.Server{
-		Addr:         r.addr,
+		Addr:         addr,
 		Handler:      promhttp.Handler(),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
@@ -139,7 +137,7 @@ func (r *Prometheus) RecordIncrement(next Recorder) Recorder {
 
 // Start the prometheus metrics endpoint server.
 func (r *Prometheus) Start(ctx context.Context) error {
-	r.log.Info("starting prometheus server", "addr", r.addr)
+	r.log.Info("starting prometheus server", "addr", r.server.Addr)
 	return r.server.ListenAndServe()
 }
 
