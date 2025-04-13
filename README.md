@@ -29,8 +29,9 @@ docker compose -f demo/docker-compose-fly.yml down
 ## TODOs
 
 ### Refactor
-  - collapse p2platency peer and grpcpeer into one
-    - can implement a separate httppeer instead of having layers of abstraction
+  - collapse p2platency peer and grpcpeer into one package
+    - can implement a separate httppeer
+    - parent GRPC peer abstraction may not be necessary
   - improve unit testability by having samplers emit samples to a channel
     - any type that emits samples should satisfy a specific interface for it
   - simplify recorder interface by using interface assertion to
