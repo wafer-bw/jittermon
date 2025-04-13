@@ -253,7 +253,7 @@
           "expr": "sum(rate(jittermon_rtt_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_rtt_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
           "hide": false,
           "instant": false,
-          "legendFormat": "round trip time (ping)",
+          "legendFormat": "ping (rtt)",
           "range": true,
           "refId": "C"
         },
@@ -610,6 +610,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 37,
+  "version": 38,
   "weekStart": ""
 }
