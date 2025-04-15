@@ -7,14 +7,14 @@
 //
 
 // Package peer_test is a generated GoMock package.
-package peer_test
+package p2platency_test
 
 import (
 	context "context"
 	reflect "reflect"
 
 	recorder "github.com/wafer-bw/jittermon/internal/recorder"
-	pollpb "github.com/wafer-bw/jittermon/internal/sampler/latency/peer/internal/pollpb"
+	pollpb "github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/pollpb"
 	gomock "go.uber.org/mock/gomock"
 	grpc "google.golang.org/grpc"
 )

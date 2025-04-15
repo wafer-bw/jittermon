@@ -29,12 +29,8 @@ docker compose -f demo/docker-compose-fly.yml down
 ## TODOs
 
 ### Refactor
-  - collapse p2platency peer and grpcpeer into one package
-    - this has been started by moving it to sampler/latency/peer, p2platency
-      abstraction may not be necessary? can maybe live in main?
-    - can implement a separate httppeer
-  - improve unit testability by having samplers emit samples to a channel
-    - any type that emits samples should satisfy a specific interface for it
+  - p2platency implementation using http
+    - decide how to organize this split
   - simplify recorder interface by using interface assertion to
     - determine sample type
     - determine labels
