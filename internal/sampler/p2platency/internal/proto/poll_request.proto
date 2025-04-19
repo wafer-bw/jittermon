@@ -4,7 +4,7 @@ package poll;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/wafer-bw/jittermon/internal/sampler/latency/peer/internal/pollpb";
+option go_package = "github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/pollpb";
 
 message PollRequest {
     // The identity of the sending peer.

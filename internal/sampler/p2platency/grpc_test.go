@@ -1,6 +1,6 @@
 package p2platency_test
 
-//go:generate go run go.uber.org/mock/mockgen -source=grpc.go -destination=grpc_mocks_test.go -package=peer_test
+//go:generate go run go.uber.org/mock/mockgen -source=grpc.go -destination=grpc_mocks_test.go -package=p2platency_test
 
 import (
 	"context"
