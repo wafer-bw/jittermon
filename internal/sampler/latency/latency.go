@@ -62,12 +62,12 @@ func (c Client) Poll(ctx context.Context) error {
 	end := time.Now()
 	rtt := end.Sub(start)
 
+	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeRTT, Val: rtt, Labels: labels})
+
 	jitter, ok := c.RequestBuffers.Interarrival(c.ID, start, end)
 	if !ok {
 		return nil
 	}
-
-	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeRTT, Val: rtt, Labels: labels})
 	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeRTTJitter, Val: jitter, Labels: labels})
 
 	return nil
