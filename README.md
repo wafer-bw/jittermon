@@ -31,6 +31,8 @@ docker compose -f demo/docker-compose-fly.yml down
 ### Refactor
   - p2platency implementation using http
     - decide how to organize this split
+  - use http transcoding as server for p2platency if in http mode?
+    - use http client for p2p latency if in http mode?
   - simplify recorder interface by using interface assertion to
     - determine sample type
     - determine labels
