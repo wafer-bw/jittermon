@@ -52,6 +52,7 @@ services:
       - "3100:3100"
     command: -config.file=/etc/loki/loki.yml
     volumes:
+      - loki-data:/loki
       - ./loki:/etc/loki
 
   promtail:
@@ -73,3 +74,4 @@ networks:
 volumes:
   grafana-data:
   prometheus-data:
+  loki-data:
