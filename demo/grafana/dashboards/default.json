@@ -94,13 +94,13 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "round trip time (ping)"
+              "options": "ping (rtt)"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "blue",
+                  "fixedColor": "semi-dark-blue",
                   "mode": "fixed"
                 }
               }
@@ -183,6 +183,36 @@
                       "value": null
                     }
                   ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rtt jitter"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "jitter (rtt)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
                 }
               }
             ]
@@ -270,6 +300,22 @@
           "legendFormat": "packet loss",
           "range": true,
           "refId": "D"
+        },
+        {
+          "datasource": {
+            "name": "Prometheus",
+            "type": "prometheus"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "sum(rate(jittermon_rtt_jitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_rtt_jitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "legendFormat": "jitter (rtt)",
+          "range": true,
+          "refId": "E",
+          "useBackend": false
         }
       ],
       "title": "Remote gRPC Peer",
@@ -610,6 +656,6 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 38,
+  "version": 40,
   "weekStart": ""
 }

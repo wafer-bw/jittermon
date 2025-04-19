@@ -9,7 +9,9 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/go-toolbox/graceful"
+	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/sampler/latency"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
 	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
 )
@@ -17,16 +19,18 @@ import (
 const shutdownTimeout time.Duration = 250 * time.Millisecond
 
 type config struct {
-	PeerID            string                `split_words:"true"`
-	LatencyListenAddr string                `split_words:"true" default:":8080"`
-	LatencySendAddrs  []string              `split_words:"true" default:":8081"`
-	LatencyInterval   time.Duration         `split_words:"true" default:"1s"`
-	TraceSendAddrs    []string              `split_words:"true" default:""`
-	TraceInterval     time.Duration         `split_words:"true" default:"1s"`
-	TraceMaxHops      int                   `split_words:"true" default:"12"`
-	Metrics           []recorder.SampleType `split_words:"true" default:"rtt,hop_rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets"`
-	MetricsAddr       string                `split_words:"true" default:""`
-	LogLevel          slog.Level            `split_words:"true" default:"INFO"`
+	PeerID               string                `envconfig:"PEER_ID" default:"jittermon"`
+	LatencySendAddrs     []string              `envconfig:"LATENCY_SEND_ADDRS" default:"8.8.8.8:53"`
+	LatencyInterval      time.Duration         `envconfig:"LATENCY_INTERVAL" default:"1s"`
+	P2PLatencyListenAddr string                `envconfig:"P2P_LATENCY_LISTEN_ADDR" default:":8080"`
+	P2PLatencySendAddrs  []string              `envconfig:"P2P_LATENCY_SEND_ADDRS" default:":8081"`
+	P2PLatencyInterval   time.Duration         `envconfig:"P2P_LATENCY_INTERVAL" default:"1s"`
+	TraceSendAddrs       []string              `envconfig:"TRACE_SEND_ADDRS" default:""`
+	TraceInterval        time.Duration         `envconfig:"TRACE_INTERVAL" default:"1s"`
+	TraceMaxHops         int                   `envconfig:"TRACE_MAX_HOPS" default:"12"`
+	Metrics              []recorder.SampleType `envconfig:"METRICS" default:"rtt,hop_rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,rtt_jitter"`
+	MetricsAddr          string                `envconfig:"METRICS_ADDR" default:""`
+	LogLevel             slog.Level            `envconfig:"LOG_LEVEL" default:"INFO"`
 }
 
 func main() {
@@ -58,11 +62,25 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 
 	chain := recorder.Chain(recorders...)
 
+	for _, addr := range conf.LatencySendAddrs {
+		client := &latency.Client{
+			ID:             conf.PeerID,
+			Address:        addr,
+			Interval:       conf.LatencyInterval,
+			Recorder:       chain,
+			RequestBuffers: &jitter.Buffer{},
+			Log:            log,
+			StopCh:         make(chan struct{}),
+			StoppedCh:      make(chan struct{}),
+		}
+		group = append(group, client)
+	}
+
 	peer, err := p2platency.NewPeer(
 		p2platency.WithID(conf.PeerID),
-		p2platency.WithListenAddress(conf.LatencyListenAddr),
-		p2platency.WithSendAddresses(conf.LatencySendAddrs...),
-		p2platency.WithInterval(conf.LatencyInterval),
+		p2platency.WithListenAddress(conf.P2PLatencyListenAddr),
+		p2platency.WithSendAddresses(conf.P2PLatencySendAddrs...),
+		p2platency.WithInterval(conf.P2PLatencyInterval),
 		p2platency.WithRecorder(chain),
 		p2platency.WithLog(log),
 	)

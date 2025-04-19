@@ -5,11 +5,7 @@ import (
 	"time"
 
 	"github.com/wafer-bw/go-toolbox/graceful"
-)
-
-// export for testing.
-const (
-	ModeGRPC = modeGRPC
+	"google.golang.org/grpc"
 )
 
 // export for testing.
@@ -58,11 +54,21 @@ func (p Peer) GetRecorder() Recorder {
 }
 
 // export for testing.
-func (p Peer) GetGRPCConfig() grpcConfig {
-	return p.grpc
+func (p Peer) GetProto() string {
+	return p.proto
 }
 
 // export for testing.
-func (p Peer) GetMode() mode {
-	return p.mode
+func (p Peer) GetDialOptions() []grpc.DialOption {
+	return p.dialOptions
+}
+
+// export for testing.
+func (p Peer) GetServerOptions() []grpc.ServerOption {
+	return p.serverOptions
+}
+
+// export for testing.
+func (p Peer) GetReflection() bool {
+	return p.reflection
 }

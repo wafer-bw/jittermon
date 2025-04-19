@@ -41,8 +41,9 @@ const (
 	SampleTypeUpstreamJitter   SampleType = "upstream_jitter"
 	SampleTypeSentPackets      SampleType = "sent_packets"
 	SampleTypeLostPackets      SampleType = "lost_packets"
-	SampleTypeRTT              SampleType = "rtt"     // round trip time (ping).
-	SampleTypeHopRTT           SampleType = "hop_rtt" // traceroute hop rtt.
+	SampleTypeRTT              SampleType = "rtt"        // round trip time (ping).
+	SampleTypeRTTJitter        SampleType = "rtt_jitter" // round trip time (ping) jitter.
+	SampleTypeHopRTT           SampleType = "hop_rtt"    // traceroute hop rtt.
 )
 
 // Sample is the data structure that is recorded by a [Recorder].

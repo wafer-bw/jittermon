@@ -4,7 +4,7 @@ package poll;
 
 import "google/protobuf/duration.proto";
 
-option go_package = "github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/grpcpeer/pollpb";
+option go_package = "github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/pollpb";
 
 message PollResponse {
     // The identity of the responding peer.
