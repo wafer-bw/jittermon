@@ -1,5 +1,3 @@
-// TODO: audit naming and name values.
-// TODO: consider how to do protocol split.
 package p2platency
 
 import (
@@ -22,6 +20,9 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// TODO: audit naming and name values.
+// TODO: consider how to do protocol split.
 
 var _ graceful.Runner = &Peer{}
 
