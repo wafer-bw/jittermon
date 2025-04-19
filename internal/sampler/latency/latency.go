@@ -14,7 +14,7 @@ import (
 const (
 	SamplerName string = "latency"
 
-	clientName      string = "http_latency_client"
+	clientName      string = "udp_latency_client"
 	replyBufferSize int    = 512
 )
 
