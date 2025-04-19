@@ -41,7 +41,8 @@ func (c Client) Poll(ctx context.Context) error {
 
 	conn, err := net.Dial("udp", c.Address)
 	if err != nil {
-		panic(err)
+		c.Log.Error("failed to dial", "err", err)
+		return err
 	}
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(c.Interval))
