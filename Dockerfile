@@ -7,7 +7,7 @@ RUN go get -v ./... \
 
 # build image
 # TODO: use scratch once traceroute has pure go implementation.
-FROM alpine:latest
+FROM alpine:3.21.3
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /go/bin/main /go/bin/main
