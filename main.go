@@ -19,11 +19,11 @@ import (
 const shutdownTimeout time.Duration = 250 * time.Millisecond
 
 type config struct {
-	PeerID               string                `envconfig:"PEER_ID" default:"jittermon"`
+	PeerID               string                `envconfig:"PEER_ID" default:""`
 	LatencySendAddrs     []string              `envconfig:"LATENCY_SEND_ADDRS" default:"8.8.8.8:53"`
 	LatencyInterval      time.Duration         `envconfig:"LATENCY_INTERVAL" default:"1s"`
-	P2PLatencyListenAddr string                `envconfig:"P2P_LATENCY_LISTEN_ADDR" default:":8080"`
-	P2PLatencySendAddrs  []string              `envconfig:"P2P_LATENCY_SEND_ADDRS" default:":8081"`
+	P2PLatencyListenAddr string                `envconfig:"P2P_LATENCY_LISTEN_ADDR" default:""`
+	P2PLatencySendAddrs  []string              `envconfig:"P2P_LATENCY_SEND_ADDRS" default:""`
 	P2PLatencyInterval   time.Duration         `envconfig:"P2P_LATENCY_INTERVAL" default:"1s"`
 	TraceSendAddrs       []string              `envconfig:"TRACE_SEND_ADDRS" default:""`
 	TraceInterval        time.Duration         `envconfig:"TRACE_INTERVAL" default:"1s"`
