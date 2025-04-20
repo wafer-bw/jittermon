@@ -54,3 +54,5 @@ docker compose -f demo/docker-compose-fly.yml down
   - likely best to use UDP, other options would be ICMP/TCP(DNS)
 - Look into establishing streaming connections for p2p to avoid TCP overhead?
 - Cobra CLI for main.go execution
+- Simple TUI visualization for CLI use?
+- Local server visualizing recorded data so it can be run without prom?
