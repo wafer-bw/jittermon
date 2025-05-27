@@ -218,10 +218,7 @@ func (p *Peer) Stop(ctx context.Context) error {
 	case <-ctx.Done():
 	}
 
-	// TODO: this shouldn't be used, it should just be based on the ctx passed
-	// to stop.
-	var timeout = 60 * time.Second
-	return p.group.Stop(ctx, timeout)
+	return p.group.Stop(ctx)
 }
 
 type Client struct {

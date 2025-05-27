@@ -104,7 +104,10 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 		group = append(group, traceRouteSampler)
 	}
 
-	if err := group.Run(ctx, shutdownTimeout, exitSignals...); err != nil {
+	if err := group.Run(ctx,
+		graceful.WithStopTimeout(shutdownTimeout),
+		graceful.WithStopSignals(exitSignals...),
+	); err != nil {
 		return err
 	}
 
