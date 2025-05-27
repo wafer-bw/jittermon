@@ -15,8 +15,8 @@ func TestLabels_Keys(t *testing.T) {
 		t.Parallel()
 
 		l := recorder.Labels{
-			{K: "foo", V: "bar"},
-			{K: "baz", V: "qux"},
+			recorder.Label{K: "foo", V: "bar"},
+			recorder.Label{K: "baz", V: "qux"},
 		}
 
 		keys := l.Keys()
@@ -34,8 +34,8 @@ func TestLabels_Values(t *testing.T) {
 		t.Parallel()
 
 		l := recorder.Labels{
-			{K: "foo", V: "bar"},
-			{K: "baz", V: "qux"},
+			recorder.Label{K: "foo", V: "bar"},
+			recorder.Label{K: "baz", V: "qux"},
 		}
 
 		values := l.Values()
