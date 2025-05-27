@@ -150,8 +150,6 @@ func WithServerReflection(enabled bool) Option {
 	}
 }
 
-// TODO: WithEnv option.
-
 func NewPeer(options ...Option) (*Peer, error) {
 	p := &Peer{
 		id:            littleid.New(),
