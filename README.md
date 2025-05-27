@@ -2,9 +2,14 @@
 [![codecov](https://codecov.io/gh/wafer-bw/jittermon/graph/badge.svg?token=EZfdMqKD7p)](https://codecov.io/gh/wafer-bw/jittermon)
 [![checks](https://github.com/wafer-bw/jittermon/actions/workflows/checks.yml/badge.svg)](https://github.com/wafer-bw/jittermon/actions/workflows/checks.yml)
 
-![Example Screenshot](./.media/examplescreen.png)
+```sh
+go run github.com/wafer-bw/jittermon@latest
+```
 
 ## Demos
+Preconfigured demos using Docker, Grafana, Prometheus, & Loki
+
+![Example Screenshot](./.media/examplescreen.png)
 
 ### Standalone
 Measures traffic to a remote IP.
