@@ -80,6 +80,10 @@ docker compose -f demo/docker-compose-remote-p2p.yml down
 ```
 
 ## TODOs
+- running locally should serve webpage with simple charts
+  - https://developers.google.com/chart/interactive/docs/gallery/linechart
+  - use htmx for frontend
+  - use duckdb to store data fallback to memory
 - decide how to split samplers
   - one package of base types? in main tie it all together with config?
   - split package per type?
