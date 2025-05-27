@@ -9,7 +9,7 @@ services:
     environment:
       - JITTERMON_LOG_LEVEL=DEBUG
       - JITTERMON_LATENCY_INTERVAL=1s
-      - JITTERMON_LATENCY_SEND_ADDRS=8.8.8.8:53
+      - JITTERMON_LATENCY_SEND_ADDRS=
       - JITTERMON_P2P_LATENCY_INTERVAL=1s
       - JITTERMON_P2P_LATENCY_LISTEN_ADDR=:8080
       - JITTERMON_P2P_LATENCY_SEND_ADDRS=peer:8081
@@ -32,6 +32,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
+      - prometheus-data:/prometheus
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     command: --config.file=/etc/prometheus/prometheus.yml
 
@@ -42,12 +43,41 @@ services:
     ports:
       - "3000:3000"
     volumes:
+      - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       - GF_SECURITY_ADMIN_USER=demo
       - GF_SECURITY_ADMIN_PASSWORD=demo
 
+  loki:
+    image: grafana/loki:3.4.1
+    networks:
+      - jittermon-network
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - loki-data:/loki
+      - ./loki:/etc/loki
+
+  promtail:
+    depends_on:
+      - loki
+    image: grafana/promtail:3.4.1
+    networks:
+      - jittermon-network
+    volumes:
+      - ./promtail:/etc/promtail
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/promtail.yml
+
 networks:
   jittermon-network:
     driver: bridge
+
+volumes:
+  grafana-data:
+  prometheus-data:
+  loki-data:
