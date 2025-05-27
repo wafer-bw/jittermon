@@ -76,8 +76,3 @@ func getDuration(v any) (time.Duration, bool) {
 
 	return d, true
 }
-
-func clone(l *slog.Logger) *slog.Logger {
-	c := *l
-	return &c
-}

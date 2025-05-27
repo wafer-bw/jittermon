@@ -9,6 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.22.0
 	github.com/stretchr/testify v1.10.0
 	github.com/wafer-bw/go-toolbox/always v1.2.2
+	github.com/wafer-bw/go-toolbox/funcopts v0.2.0
 	github.com/wafer-bw/go-toolbox/graceful v0.3.0
 	go.uber.org/mock v0.5.0
 	google.golang.org/grpc v1.71.1

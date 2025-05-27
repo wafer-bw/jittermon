@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	namespace    string        = "jittermon"     // TODO: make controllable.
-	readTimeout  time.Duration = 1 * time.Second // TODO: make controllable.
-	writeTimeout time.Duration = 2 * time.Second // TODO: make controllable.
-	idleTimeout  time.Duration = 5 * time.Second // TODO: make controllable.
+	namespace    string        = "jittermon"     // TODO: make configurable.
+	readTimeout  time.Duration = 1 * time.Second // TODO: make configurable.
+	writeTimeout time.Duration = 2 * time.Second // TODO: make configurable.
+	idleTimeout  time.Duration = 5 * time.Second // TODO: make configurable.
 )
 
 type Prometheus struct {
