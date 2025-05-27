@@ -42,7 +42,8 @@ docker compose -f demo/docker-compose-local-p2p.yml down
 ### Remote P2P
 Measures traffic between a local & remote peer using fly.io. This is for
 advanced users only. Will cost at least $2/mo on fly.io because we need a
-non-shared ipv4 address.
+non-shared ipv4 address. For some reason gRPC isn't well-supported by Fly on
+shared IP addresses.
 
 First, review [fly.toml](./fly.toml), you may want to update
 `primary_region = 'yyz'` to your own [region](https://fly.io/docs/reference/regions).
@@ -77,10 +78,6 @@ docker compose -f demo/docker-compose-remote-p2p.yml up -d
 # stop
 docker compose -f demo/docker-compose-remote-p2p.yml down
 ```
-
-> [!NOTE]
-> Won't work in fly.io with a shared IPv4, you will need a dedicated one which
-> costs $2/mo.
 
 ## TODOs
 - use http transcoding as server for p2platency if in http mode?
