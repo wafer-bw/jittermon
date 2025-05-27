@@ -4,27 +4,55 @@
 
 ![Example Screenshot](./.media/examplescreen.png)
 
+## Demos
+
+### Standalone
+Measures traffic to a remote IP.
 ```sh
 # build docker image
 docker build -t jittermon .
 # start the demo
-docker compose -f demo/docker-compose-local.yml up -d
-# http://localhost:3000/d/aec2tnhcwbuo0b
-docker compose -f demo/docker-compose-local.yml down
+docker compose -f demo/docker-compose-standalone.yml up -d
+# observe metrics at http://localhost:3000/d/aec2tnhcwbuo0b
+```
+```sh
+# stop
+docker compose -f demo/docker-compose-standalone.yml down
 ```
 
+### Local P2P
+Measures traffic between local peers on the same network.
 ```sh
+# build docker image
+docker build -t jittermon .
+# start the demo
+docker compose -f demo/docker-compose-local-p2p.yml up -d
+# observe metrics at http://localhost:3000/d/aec2tnhcwbuo0b
+```
+```sh
+# stop
+docker compose -f demo/docker-compose-local-p2p.yml down
+```
+
+### Remote P2P
+Measures traffic between a local & remote peer using fly.io.
+```sh
+# build docker image
+docker build -t jittermon .
 # deploy to fly
 fly deploy
 # start the demo
-docker compose -f demo/docker-compose-fly.yml up -d
-# http://localhost:3000/d/aec2tnhcwbuo0b
-docker compose -f demo/docker-compose-fly.yml down
+docker compose -f demo/docker-compose-remote-p2p.yml up -d
+# observe metrics at http://localhost:3000/d/aec2tnhcwbuo0b
+```
+```sh
+# stop
+docker compose -f demo/docker-compose-remote-p2p.yml down
 ```
 
-## Notes
-- Won't work in fly.io with a shared IPv4, you will need a dedicated one which
-  costs $2/mo.
+> [!NOTE]
+> Won't work in fly.io with a shared IPv4, you will need a dedicated one which
+> costs $2/mo.
 
 ## TODOs
 - use http transcoding as server for p2platency if in http mode?

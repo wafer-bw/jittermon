@@ -8,9 +8,10 @@ services:
       - "8081:8081"
       - "8082:8082"
     environment:
+      - JITTERMON_PEER_ID=local-peer
       - JITTERMON_LOG_LEVEL=INFO
-      - JITTERMON_LATENCY_INTERVAL=0.25s
-      - JITTERMON_LATENCY_SEND_ADDRS=8.8.8.8:53
+      - JITTERMON_LATENCY_INTERVAL=1s
+      - JITTERMON_LATENCY_SEND_ADDRS=
       - JITTERMON_P2P_LATENCY_INTERVAL=0.25s
       - JITTERMON_P2P_LATENCY_LISTEN_ADDR=:8081
       - JITTERMON_TRACE_INTERVAL=1s
@@ -25,7 +26,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - prometheus-data:/prometheus
+      - jittermon-remote-p2p-prometheus-data:/prometheus
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     command: --config.file=/etc/prometheus/prometheus.yml
 
@@ -36,7 +37,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - grafana-data:/var/lib/grafana
+      - jittermon-remote-p2p-grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     environment:
@@ -51,7 +52,7 @@ services:
       - "3100:3100"
     command: -config.file=/etc/loki/loki.yml
     volumes:
-      - loki-data:/loki
+      - jittermon-remote-p2p-loki-data:/loki
       - ./loki:/etc/loki
 
   promtail:
@@ -71,6 +72,6 @@ networks:
     driver: bridge
 
 volumes:
-  grafana-data:
-  prometheus-data:
-  loki-data:
+  jittermon-remote-p2p-grafana-data:
+  jittermon-remote-p2p-prometheus-data:
+  jittermon-remote-p2p-loki-data:

@@ -7,23 +7,13 @@ services:
     ports:
       - "8082:8082"
     environment:
+      - JITTERMON_PEER_ID=jittermon
       - JITTERMON_LOG_LEVEL=DEBUG
       - JITTERMON_LATENCY_INTERVAL=1s
-      - JITTERMON_LATENCY_SEND_ADDRS=
-      - JITTERMON_P2P_LATENCY_INTERVAL=1s
-      - JITTERMON_P2P_LATENCY_LISTEN_ADDR=:8080
-      - JITTERMON_P2P_LATENCY_SEND_ADDRS=peer:8081
+      - JITTERMON_LATENCY_SEND_ADDRS=8.8.8.8:53
       - JITTERMON_METRICS_ADDR=:8082
-
-  peer:
-    image: jittermon:latest
-    networks:
-      - jittermon-network
-    environment:
-      - JITTERMON_LOG_LEVEL=DEBUG
-      - JITTERMON_P2P_LATENCY_INTERVAL=1s
-      - JITTERMON_P2P_LATENCY_LISTEN_ADDR=:8081
-      - JITTERMON_P2P_LATENCY_SEND_ADDRS=jittermon:8080
+      - JITTERMON_TRACE_INTERVAL=1s
+      - JITTERMON_TRACE_SEND_ADDRS=8.8.8.8:53
 
   prometheus:
     image: prom/prometheus:latest
