@@ -35,7 +35,7 @@ func BenchmarkPrometheus_RecordDuration(b *testing.B) {
 	})
 
 	b.Run("with 2 labels", func(b *testing.B) {
-		labels := recorder.Labels{{K: "a", V: "b"}, {K: "c", V: "d"}}
+		labels := recorder.Labels{recorder.Label{K: "a", V: "b"}, recorder.Label{K: "c", V: "d"}}
 		sample := recorder.Sample{Type: "def", Val: 1 * time.Second, Labels: labels}
 		for b.Loop() {
 			p.RecordDuration(noop).Record(ctx, sample)
@@ -61,7 +61,7 @@ func BenchmarkPrometheus_RecordIncrement(b *testing.B) {
 	})
 
 	b.Run("with 2 labels", func(b *testing.B) {
-		labels := recorder.Labels{{K: "a", V: "b"}, {K: "c", V: "d"}}
+		labels := recorder.Labels{recorder.Label{K: "a", V: "b"}, recorder.Label{K: "c", V: "d"}}
 		sample := recorder.Sample{Type: "def", Val: struct{}{}, Labels: labels}
 		for b.Loop() {
 			p.RecordIncrement(noop).Record(ctx, sample)
