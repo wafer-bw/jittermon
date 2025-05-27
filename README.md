@@ -32,11 +32,13 @@ docker compose -f demo/docker-compose-fly.yml down
 - decide how to split samplers
   - one package of base types? in main tie it all together with config?
   - split package per type?
+  - sub group dichotomy?
 - simplify recorder interface by using interface assertion to
   - determine sample type
   - determine labels
   - determine timestamp
   - no longer need `Sample` or `SampleType`
+- move recorders into packages
 - add contextual log handler for common attributes
 - move logger into context
 - add a way to request samplers by name
@@ -45,8 +47,8 @@ docker compose -f demo/docker-compose-fly.yml down
 - route tracing
   - hop filtering in grafana
   - more useful visualizations
-- persist loki data locally
 - promote samplers out of internal
+- promote recorders out of internal
 - long term nice to have
 - make checks workflow only run when go code changes
 - at least one alternative to fly.io for demo
