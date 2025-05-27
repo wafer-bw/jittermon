@@ -80,8 +80,6 @@ docker compose -f demo/docker-compose-remote-p2p.yml down
 ```
 
 ## TODOs
-- use http transcoding as server for p2platency if in http mode?
-- use http client for p2p latency if in http mode?
 - decide how to split samplers
   - one package of base types? in main tie it all together with config?
   - split package per type?
@@ -91,22 +89,17 @@ docker compose -f demo/docker-compose-remote-p2p.yml down
   - determine labels
   - determine timestamp
   - no longer need `Sample` or `SampleType`
-- move recorders into packages
-- add contextual log handler for common attributes
+- identify samplers more consistently
 - move logger into context
+  - add contextual log handler for common attributes
 - add a way to request samplers by name
 - handle src/dst id/address confusion
 - back off send rate when failing
 - route tracing
   - hop filtering in grafana
   - more useful visualizations
-- promote samplers out of internal
-- promote recorders out of internal
-- long term nice to have
-- make checks workflow only run when go code changes
+- promote required packages out of internal
 - at least one alternative to fly.io for demo
-- dedicated RTT sampler
-  - likely best to use UDP, other options would be ICMP/TCP(DNS)
 - Look into establishing streaming connections for p2p to avoid TCP overhead?
 - Cobra CLI for main.go execution
 - Simple TUI visualization for CLI use?

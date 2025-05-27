@@ -12,6 +12,7 @@ import (
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 	"github.com/wafer-bw/jittermon/internal/recorder/logger"
+	"github.com/wafer-bw/jittermon/internal/recorder/prometheus"
 	"github.com/wafer-bw/jittermon/internal/sampler/latency"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
 	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
@@ -58,7 +59,7 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	}
 
 	if conf.MetricsAddr != "" {
-		prometheus, err := recorder.NewPrometheus(conf.MetricsAddr, log)
+		prometheus, err := prometheus.New(conf.MetricsAddr, log)
 		if err != nil {
 			return err
 		}

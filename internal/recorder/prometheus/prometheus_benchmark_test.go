@@ -1,4 +1,4 @@
-package recorder_test
+package prometheus_test
 
 // goos: darwin
 // goarch: arm64
@@ -15,12 +15,13 @@ import (
 	"time"
 
 	"github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/recorder/prometheus"
 )
 
 func BenchmarkPrometheus_RecordDuration(b *testing.B) {
 	ctx := b.Context()
 
-	p, err := recorder.NewPrometheus(":8080", nil)
+	p, err := prometheus.New(":8080", nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -46,7 +47,7 @@ func BenchmarkPrometheus_RecordDuration(b *testing.B) {
 func BenchmarkPrometheus_RecordIncrement(b *testing.B) {
 	ctx := b.Context()
 
-	p, err := recorder.NewPrometheus(":8080", nil)
+	p, err := prometheus.New(":8080", nil)
 	if err != nil {
 		b.Fatal(err)
 	}

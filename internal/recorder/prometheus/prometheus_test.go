@@ -1,4 +1,4 @@
-package recorder_test
+package prometheus_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/wafer-bw/go-toolbox/always"
 	"github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/recorder/prometheus"
 )
 
 func TestNewPrometheus(t *testing.T) {
@@ -20,7 +21,7 @@ func TestNewPrometheus(t *testing.T) {
 	t.Run("returns a new prometheus", func(t *testing.T) {
 		t.Parallel()
 
-		p, err := recorder.NewPrometheus(":8080", nil)
+		p, err := prometheus.New(":8080", nil)
 		require.NoError(t, err)
 		require.NotNil(t, p)
 	})
@@ -32,7 +33,7 @@ func TestPrometheus_DefaultRecorders(t *testing.T) {
 	t.Run("returns intended amount of default recorders", func(t *testing.T) {
 		t.Parallel()
 
-		p, err := recorder.NewPrometheus(":8080", nil)
+		p, err := prometheus.New(":8080", nil)
 		require.NoError(t, err)
 
 		recorders := p.DefaultRecorders()
@@ -48,7 +49,7 @@ func TestPrometheus_StartStop(t *testing.T) {
 
 		ctx := t.Context()
 		addr := net.JoinHostPort("", strconv.Itoa(always.Accept(freeport.GetFreePort())))
-		p, err := recorder.NewPrometheus(addr, nil)
+		p, err := prometheus.New(addr, nil)
 		require.NoError(t, err)
 
 		go func() {
@@ -73,7 +74,7 @@ func TestPrometheus_StartStop(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		p, err := recorder.NewPrometheus("-1", nil)
+		p, err := prometheus.New("-1", nil)
 		require.NoError(t, err)
 
 		err = p.Start(ctx)
@@ -93,7 +94,7 @@ func TestPrometheus_RecordDuration(t *testing.T) {
 			{Type: "def", Val: 1 * time.Second},
 		}
 
-		p, err := recorder.NewPrometheus(":8080", nil)
+		p, err := prometheus.New(":8080", nil)
 		require.NoError(t, err)
 
 		noop := recorder.RecorderFunc(func(context.Context, recorder.Sample) {})
@@ -112,7 +113,7 @@ func TestPrometheus_RecordDuration(t *testing.T) {
 			{Type: "def", Val: struct{}{}},
 		}
 
-		p, err := recorder.NewPrometheus(":8080", nil)
+		p, err := prometheus.New(":8080", nil)
 		require.NoError(t, err)
 
 		noop := recorder.RecorderFunc(func(context.Context, recorder.Sample) {})
@@ -135,7 +136,7 @@ func TestPrometheus_RecordIncrement(t *testing.T) {
 			{Type: "def", Val: struct{}{}},
 		}
 
-		p, err := recorder.NewPrometheus(":8080", nil)
+		p, err := prometheus.New(":8080", nil)
 		require.NoError(t, err)
 
 		noop := recorder.RecorderFunc(func(context.Context, recorder.Sample) {})
@@ -154,7 +155,7 @@ func TestPrometheus_RecordIncrement(t *testing.T) {
 			{Type: "def", Val: 1 * time.Second},
 		}
 
-		p, err := recorder.NewPrometheus(":8080", nil)
+		p, err := prometheus.New(":8080", nil)
 		require.NoError(t, err)
 
 		noop := recorder.RecorderFunc(func(context.Context, recorder.Sample) {})

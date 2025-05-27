@@ -1,4 +1,4 @@
-package recorder
+package prometheus
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
 const (
@@ -27,9 +28,9 @@ type Prometheus struct {
 	histograms map[string]*prometheus.HistogramVec
 }
 
-// NewPrometheus returns a new [Prometheus] which must be started and stopped
-// using [Prometheus.Start] and [Prometheus.Stop] respectively.
-func NewPrometheus(addr string, log *slog.Logger) (*Prometheus, error) {
+// New returns a new [Prometheus] which must be started and stopped using
+// [Prometheus.Start] and [Prometheus.Stop] respectively.
+func New(addr string, log *slog.Logger) (*Prometheus, error) {
 	r := &Prometheus{
 		mu:  &sync.Mutex{},
 		log: log,
@@ -51,17 +52,17 @@ func NewPrometheus(addr string, log *slog.Logger) (*Prometheus, error) {
 }
 
 // DefaultRecorders returns the default, recommended recorders.
-func (r *Prometheus) DefaultRecorders() []ChainLink {
-	return []ChainLink{
+func (r *Prometheus) DefaultRecorders() []recorder.ChainLink {
+	return []recorder.ChainLink{
 		r.RecordDuration,
 		r.RecordIncrement,
 	}
 }
 
-// RecordDuration records samples whose [Sample.Val] is a [time.Duration].
+// RecordDuration records samples whose [recorder.Sample.Val] is a [time.Duration].
 // It records the duration in seconds to a [prometheus.HistogramVec].
-func (r *Prometheus) RecordDuration(next Recorder) Recorder {
-	return RecorderFunc(func(ctx context.Context, s Sample) {
+func (r *Prometheus) RecordDuration(next recorder.Recorder) recorder.Recorder {
+	return recorder.RecorderFunc(func(ctx context.Context, s recorder.Sample) {
 		defer next.Record(ctx, s)
 		r.mu.Lock()
 		defer r.mu.Unlock()
@@ -101,10 +102,10 @@ func (r *Prometheus) RecordDuration(next Recorder) Recorder {
 	})
 }
 
-// RecordIncrement records samples whose [Sample.Val] is `strut{}{}`, such
+// RecordIncrement records samples whose [recorder.Sample.Val] is `strut{}{}`, such
 // samples have no value and are only used to increment a counter.
-func (r *Prometheus) RecordIncrement(next Recorder) Recorder {
-	return RecorderFunc(func(ctx context.Context, s Sample) {
+func (r *Prometheus) RecordIncrement(next recorder.Recorder) recorder.Recorder {
+	return recorder.RecorderFunc(func(ctx context.Context, s recorder.Sample) {
 		defer next.Record(ctx, s)
 		r.mu.Lock()
 		defer r.mu.Unlock()

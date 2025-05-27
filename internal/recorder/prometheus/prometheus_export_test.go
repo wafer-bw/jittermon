@@ -1,4 +1,4 @@
-package recorder
+package prometheus
 
 import (
 	"log/slog"
