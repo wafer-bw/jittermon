@@ -382,7 +382,20 @@ func (s *Server) Start(ctx context.Context) error {
 
 	close(s.StartedCh)
 
-	return s.Server.Serve(listener)
+	errCh := make(chan error)
+	go func() {
+		if err := s.Server.Serve(listener); err != nil {
+			errCh <- fmt.Errorf("failed to serve %s[%s]: %w", serverName, s.ID, err)
+		}
+		close(errCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errCh:
+		return err
+	}
 }
 
 func (s *Server) Stop(ctx context.Context) error {
