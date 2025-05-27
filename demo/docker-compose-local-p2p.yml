@@ -17,6 +17,7 @@ services:
       - JITTERMON_TRACE_INTERVAL=1s
       - JITTERMON_TRACE_SEND_ADDRS=peer:53
       - JITTERMON_METRICS_ADDR=:8082
+      - JITTERMON_USE_LOG_RECORDER=false
 
   peer:
     image: jittermon:latest

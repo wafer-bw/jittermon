@@ -11,12 +11,13 @@ import (
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/recorder/logger"
 	"github.com/wafer-bw/jittermon/internal/sampler/latency"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
 	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
 )
 
-const shutdownTimeout time.Duration = 250 * time.Millisecond
+const shutdownTimeout time.Duration = 1 * time.Second
 
 type config struct {
 	PeerID               string                `envconfig:"PEER_ID" default:""`
@@ -31,6 +32,7 @@ type config struct {
 	Metrics              []recorder.SampleType `envconfig:"METRICS" default:"rtt,hop_rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,rtt_jitter"`
 	MetricsAddr          string                `envconfig:"METRICS_ADDR" default:""`
 	LogLevel             slog.Level            `envconfig:"LOG_LEVEL" default:"INFO"`
+	UseLogRecorder       bool                  `envconfig:"USE_LOG_RECORDER" default:"true"`
 }
 
 func main() {
@@ -50,6 +52,10 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	group := graceful.Group{}
 	recorders := []recorder.ChainLink{recorder.MetricFilter(conf.Metrics...)}
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
+
+	if conf.UseLogRecorder {
+		recorders = append(recorders, logger.Recorder(log))
+	}
 
 	if conf.MetricsAddr != "" {
 		prometheus, err := recorder.NewPrometheus(conf.MetricsAddr, log)

@@ -16,6 +16,7 @@ services:
       - JITTERMON_P2P_LATENCY_LISTEN_ADDR=:8081
       - JITTERMON_TRACE_INTERVAL=1s
       - JITTERMON_METRICS_ADDR=:8082
+      - JITTERMON_USE_LOG_RECORDER=false
     env_file:
       - .env
 

@@ -14,6 +14,7 @@ services:
       - JITTERMON_METRICS_ADDR=:8082
       - JITTERMON_TRACE_INTERVAL=1s
       - JITTERMON_TRACE_SEND_ADDRS=8.8.8.8:53
+      - JITTERMON_USE_LOG_RECORDER=false
 
   prometheus:
     image: prom/prometheus:latest
