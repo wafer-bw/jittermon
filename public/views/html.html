@@ -1,0 +1,27 @@
+{{ block "htmlstart" . }}
+<!DOCTYPE html>
+<html lang="en">
+{{ end }}
+
+{{ block "head" . }}
+<head>
+    <title>Network Latency</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://unpkg.com/htmx.org@latest/dist/htmx.min.js"></script>
+    <script type="text/javascript" src="/static/js/chart.js"></script>
+</head>
+{{ end }}
+
+{{ block "footer" . }}
+<footer>
+    <p>JitterMon | Created by <a href="https://github.com/wafer-bw">wafer-bw</a></p>
+</footer>
+{{ end }}
+
+{{ block "htmlend" . }}
+</html>
+{{ end }}

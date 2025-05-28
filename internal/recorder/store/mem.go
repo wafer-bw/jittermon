@@ -3,21 +3,141 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"html/template"
+	"io"
 	"log/slog"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/wafer-bw/go-toolbox/funcopts"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
 const (
-	DefaultCapacity int           = 1000
-	readTimeout     time.Duration = 1 * time.Second // TODO: make configurable.
-	writeTimeout    time.Duration = 2 * time.Second // TODO: make configurable.
-	idleTimeout     time.Duration = 5 * time.Second // TODO: make configurable.
+	trailingActiveDataCapacity int           = 3
+	DefaultCapacity            int           = 20_000
+	readTimeout                time.Duration = 1 * time.Second // TODO: make configurable.
+	writeTimeout               time.Duration = 2 * time.Second // TODO: make configurable.
+	idleTimeout                time.Duration = 5 * time.Second // TODO: make configurable.
 )
+
+var templateFiles []string = []string{
+	"./public/views/html.html",
+	"./public/views/index.html",
+}
+
+type Templates struct {
+	Index *template.Template
+}
+
+func (t *Templates) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.Index.ExecuteTemplate(w, name, data)
+}
+
+type AggRows []AggRow
+
+func (a AggRows) Range(start time.Time, end time.Time) AggRows {
+	if len(a) == 0 {
+		return nil
+	}
+
+	var result []AggRow
+	for _, row := range a {
+		if row.Time.After(start) && row.Time.Before(end) {
+			result = append(result, row)
+		}
+	}
+
+	return result
+}
+
+func (a AggRows) MarshalJSON() ([]byte, error) {
+	rows := make([]any, len(a)+1)
+	rows[0] = []any{"Time", "Ping", "Jitter", "Packet Loss"}
+	for i, row := range a {
+		rows[i+1] = []any{
+			row.Time.Format(time.DateTime),
+			row.RTTMilliseconds,
+			row.JitterMilliseconds,
+			row.PacketLoss,
+		}
+	}
+
+	return json.Marshal(rows)
+}
+
+type AggRow struct {
+	Time               time.Time `json:"time"`
+	PacketLoss         float64   `json:"packetLossPercentage"`
+	RTTMilliseconds    float64   `json:"rttMilliseconds"`
+	JitterMilliseconds float64   `json:"jitterMilliseconds"`
+}
+
+func (a AggRow) String() string {
+	return fmt.Sprintf(
+		"time: %s, packetLoss: %.2f%%, rttMilliseconds: %.2f, jitterMilliseconds: %.2f",
+		a.Time.Format(time.RFC3339), a.PacketLoss, a.RTTMilliseconds, a.JitterMilliseconds,
+	)
+}
+
+type Rows []Row
+
+func (r Rows) Index(t time.Time) (int, bool) {
+	for i, row := range r {
+		if row.time.Equal(t) {
+			return i, true
+		}
+	}
+
+	return 0, false
+}
+
+type Row struct {
+	time        time.Time
+	lostPackets int
+	sentPackets int
+	rttCount    int
+	rttSum      time.Duration
+	jitterCount int
+	jitterSum   time.Duration
+}
+
+func (r Row) String() string {
+	return fmt.Sprintf(
+		"time: %s, sentPackets: %d, lostPackets: %d, rttCount: %d, rttSum: %s, jitterCount: %d, jitterSum: %s",
+		r.time.Format(time.RFC3339), r.sentPackets, r.lostPackets, r.rttCount, r.rttSum.String(), r.jitterCount, r.jitterSum.String(),
+	)
+}
+
+func (r Row) Aggregate() AggRow {
+	var packetLoss float64
+	if r.sentPackets > 0 {
+		//nolint:mnd // convert to percentage.
+		packetLoss = float64(r.lostPackets) / float64(r.sentPackets) * 100
+	}
+
+	var rttMs float64
+	if r.rttCount > 0 {
+		//nolint:mnd // convert to milliseconds.
+		rttMs = float64(r.rttSum.Microseconds()) / 1000 / float64(r.rttCount)
+	}
+
+	var jitterMs float64
+	if r.jitterCount > 0 {
+		//nolint:mnd // convert to milliseconds.
+		jitterMs = float64(r.jitterSum.Microseconds()) / 1000 / float64(r.jitterCount)
+	}
+
+	return AggRow{
+		Time:               r.time,
+		PacketLoss:         packetLoss,
+		RTTMilliseconds:    rttMs,
+		JitterMilliseconds: jitterMs,
+	}
+}
 
 type Option func(*Store) error
 
@@ -46,8 +166,10 @@ type Store struct {
 	server   *http.Server
 	log      *slog.Logger
 
-	mu   *sync.RWMutex
-	data map[recorder.SampleType][]recorder.Sample
+	mu *sync.RWMutex
+
+	aggregate  AggRows
+	activeData Rows
 }
 
 func New(opts ...Option) (*Store, error) {
@@ -55,22 +177,23 @@ func New(opts ...Option) (*Store, error) {
 		capacity: DefaultCapacity,
 		log:      slog.New(slog.DiscardHandler),
 		mu:       &sync.RWMutex{},
-		data:     map[recorder.SampleType][]recorder.Sample{},
+
+		activeData: make(Rows, 0, trailingActiveDataCapacity),
 	}
 
-	server := &http.Server{
+	if err := funcopts.Process(s, opts...); err != nil {
+		return nil, err
+	}
+
+	s.server = &http.Server{
 		Addr:         ":8083", // TODO: make configurable.
-		Handler:      s,
+		Handler:      s.Router(),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		IdleTimeout:  idleTimeout,
 	}
 
-	s.server = server
-
-	if err := funcopts.Process(s, opts...); err != nil {
-		return nil, err
-	}
+	s.aggregate = make(AggRows, 0, s.capacity)
 
 	return s, nil
 }
@@ -82,29 +205,91 @@ func (s *Store) Recorder(next recorder.Recorder) recorder.Recorder {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 
-		if _, ok := s.data[sample.Type]; !ok {
-			s.data[sample.Type] = make([]recorder.Sample, 0, s.capacity)
-		} else if len(s.data[sample.Type]) >= s.capacity {
-			s.data[sample.Type] = s.data[sample.Type][1:]
+		tick := sample.Time.Round(time.Second)
+
+		if len(s.activeData) > trailingActiveDataCapacity {
+			s.aggregate = append(s.aggregate, s.activeData[0].Aggregate())
+			s.activeData = s.activeData[1:]
 		}
 
-		s.data[sample.Type] = append(s.data[sample.Type], sample)
+		if len(s.aggregate) > s.capacity {
+			s.aggregate = s.aggregate[1:]
+		}
+
+		activeIndex, ok := s.activeData.Index(tick)
+		if !ok {
+			s.activeData = append(s.activeData, Row{time: tick})
+			activeIndex = len(s.activeData) - 1
+		}
+
+		data := s.activeData[activeIndex]
+		duration, durationOk := sample.GetDuration()
+
+		switch sample.Type {
+		case recorder.SampleTypeSentPackets:
+			data.sentPackets++
+		case recorder.SampleTypeLostPackets:
+			data.lostPackets++
+		case recorder.SampleTypeRTT:
+			if !durationOk {
+				break
+			}
+			data.rttCount++
+			data.rttSum += duration
+		case recorder.SampleTypeRTTJitter:
+			if !durationOk {
+				break
+			}
+			data.jitterCount++
+			data.jitterSum += duration
+		case // ignored.
+			recorder.SampleTypeDownstreamJitter,
+			recorder.SampleTypeUpstreamJitter,
+			recorder.SampleTypeHopRTT:
+			break
+		}
+
+		s.activeData[activeIndex] = data
 	})
 }
 
-func (s *Store) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Store) Router() *echo.Echo {
+	e := echo.New()
+	// e.Use(middleware.Logger())
+	e.Renderer = &Templates{Index: template.Must(template.ParseFiles(templateFiles...))}
+	e.Static("/static", "./public/static")
+
+	e.GET("/", func(c echo.Context) error { return c.Render(http.StatusOK, "index", nil) })
+	e.GET("/data", s.HandleChart)
+
+	return e
+}
+
+func (s *Store) HandleChart(c echo.Context) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	b, err := json.Marshal(s.data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	now := time.Now().Round(time.Second)
+	end := now
+	start := end.Add(-15 * time.Minute)
+
+	endDuration, _ := time.ParseDuration(c.QueryParam("end"))
+	if endDuration != 0 {
+		end = end.Add(-endDuration)
+	}
+	if end.After(now) {
+		end = now
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(b)
+	startDuration, _ := time.ParseDuration(c.QueryParam("start"))
+	if startDuration != 0 {
+		start = end.Add(-startDuration)
+	}
+	if start.After(end) {
+		start = end.Add(-15 * time.Minute)
+	}
+
+	return c.JSON(http.StatusOK, s.aggregate.Range(start, end))
 }
 
 func (s Store) Start(ctx context.Context) error {

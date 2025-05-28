@@ -21,7 +21,7 @@ func Recorder(logger *slog.Logger) func(next recorder.Recorder) recorder.Recorde
 				return
 			}
 
-			duration, durationOk := getDuration(s.Val)
+			duration, durationOk := s.GetDuration()
 			if durationOk {
 				duration = duration.Round(time.Microsecond)
 			}
@@ -60,19 +60,4 @@ func Recorder(logger *slog.Logger) func(next recorder.Recorder) recorder.Recorde
 			}
 		})
 	}
-}
-
-func getDuration(v any) (time.Duration, bool) {
-	d, ok := v.(time.Duration)
-	if !ok {
-		dp, ok := v.(*time.Duration)
-		if !ok {
-			return 0, false
-		} else if dp == nil {
-			return 0, false
-		}
-		d = *dp
-	}
-
-	return d, true
 }

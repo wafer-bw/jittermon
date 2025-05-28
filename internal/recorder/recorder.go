@@ -54,6 +54,21 @@ type Sample struct {
 	Labels Labels
 }
 
+func (s Sample) GetDuration() (time.Duration, bool) {
+	d, ok := s.Val.(time.Duration)
+	if !ok {
+		dp, ok := s.Val.(*time.Duration)
+		if !ok {
+			return 0, false
+		} else if dp == nil {
+			return 0, false
+		}
+		d = *dp
+	}
+
+	return d, true
+}
+
 // ChainLink is a function that accepts and returns a [Recorder]. The returned
 // [Recorder] should call `next.Record()` to continue the chain.
 type ChainLink func(next Recorder) Recorder

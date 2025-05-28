@@ -24,7 +24,7 @@ const shutdownTimeout time.Duration = 1 * time.Second
 type config struct {
 	PeerID                string                `envconfig:"PEER_ID" default:""`
 	LatencySendAddrs      []string              `envconfig:"LATENCY_SEND_ADDRS" default:"8.8.8.8:53"`
-	LatencyInterval       time.Duration         `envconfig:"LATENCY_INTERVAL" default:"1s"`
+	LatencyInterval       time.Duration         `envconfig:"LATENCY_INTERVAL" default:"0.25s"`
 	P2PLatencyListenAddr  string                `envconfig:"P2P_LATENCY_LISTEN_ADDR" default:""`
 	P2PLatencySendAddrs   []string              `envconfig:"P2P_LATENCY_SEND_ADDRS" default:""`
 	P2PLatencyInterval    time.Duration         `envconfig:"P2P_LATENCY_INTERVAL" default:"1s"`
@@ -34,7 +34,7 @@ type config struct {
 	Metrics               []recorder.SampleType `envconfig:"METRICS" default:"rtt,hop_rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,rtt_jitter"`
 	MetricsAddr           string                `envconfig:"METRICS_ADDR" default:""`
 	LogLevel              slog.Level            `envconfig:"LOG_LEVEL" default:"INFO"`
-	UseLogRecorder        bool                  `envconfig:"USE_LOG_RECORDER" default:"true"`
+	UseLogRecorder        bool                  `envconfig:"USE_LOG_RECORDER" default:"false"`
 	UseLocalStoreRecorder bool                  `envconfig:"USE_LOCAL_STORE_RECORDER" default:"true"`
 }
 
