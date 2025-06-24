@@ -92,7 +92,7 @@ func (f RecorderFunc) Record(ctx context.Context, s Sample) {
 // Chain [ChainLink]s together to create a single [Recorder].
 func Chain(recorders ...ChainLink) Recorder {
 	// TODO: consider making receiver of type []ChainLink.
-	terminal := RecorderFunc(func(ctx context.Context, s Sample) { return })
+	terminal := RecorderFunc(func(ctx context.Context, s Sample) {})
 	if len(recorders) == 0 {
 		return terminal
 	}
