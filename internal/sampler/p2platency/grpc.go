@@ -380,8 +380,6 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	defer listener.Close()
 
-	close(s.StartedCh)
-
 	errCh := make(chan error)
 	go func() {
 		if err := s.Server.Serve(listener); err != nil {
@@ -389,6 +387,8 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 		close(errCh)
 	}()
+
+	close(s.StartedCh)
 
 	select {
 	case <-ctx.Done():
