@@ -1,5 +1,5 @@
 # build binary
-FROM golang:1.24.3 AS builder
+FROM golang:1.24.4 AS builder
 WORKDIR /jittermon
 COPY . .
 RUN go get -v ./... \
