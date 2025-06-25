@@ -9,9 +9,29 @@ body {
     box-sizing: border-box;
 }
 
+#chart-wrapper {
+    margin: 20px 50px;
+}
+
+.control {
+    padding: 5px;
+}
+
+#controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+}
+
+#start,
+#end {
+    width: 6em;
+}
+
 #network-chart {
     width: 100vw;
-    height: calc(100vh - 100px); /* 100px for footer */
+    height: calc(100vh - 100px);
+    /* 100px for footer */
     min-height: 0;
     min-width: 0;
     display: block;

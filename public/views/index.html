@@ -12,11 +12,17 @@
 {{ end }}
 
 {{ block "chart" . }}
-<div id="controls"> <!-- TODO: Hook into these inputs to control query to API -->
-    <label for="start">Start:</label>
-    <input type="text" id="start" name="start" value="15m">
-    <label for="end">End:</label>
-    <input type="text" id="end" name="end" value="now">
+<div id="chart-wrapper">
+    <div id="controls"> <!-- TODO: Hook into these inputs to control query to API -->
+        <div class="control">
+            <label for="start">Start:</label>
+            <input type="text" id="start" name="start" value="15m">
+        </div>
+         <div class="control">
+            <label for="end">End:</label>
+            <input type="text" id="end" name="end" value="now">
+        </div>
+    </div>
+    <div id="network-chart"></div>
 </div>
-<div id="network-chart"></div>
 {{ end }}
