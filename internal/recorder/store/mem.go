@@ -270,9 +270,8 @@ func (s *Store) HandleChart(c echo.Context) error {
 	defer s.mu.RUnlock()
 
 	now := time.Now().Round(time.Second)
-	end := now
-	start := end.Add(-15 * time.Minute)
 
+	end := now
 	endDuration, _ := time.ParseDuration(c.QueryParam("end"))
 	if endDuration != 0 {
 		end = end.Add(-endDuration)
@@ -281,6 +280,7 @@ func (s *Store) HandleChart(c echo.Context) error {
 		end = now
 	}
 
+	start := end.Add(-15 * time.Minute)
 	startDuration, _ := time.ParseDuration(c.QueryParam("start"))
 	if startDuration != 0 {
 		start = end.Add(-startDuration)
@@ -293,7 +293,7 @@ func (s *Store) HandleChart(c echo.Context) error {
 }
 
 func (s Store) Start(ctx context.Context) error {
-	s.log.Info("starting data server", "addr", s.server.Addr)
+	s.log.Info("starting", "name", "data_server", "addr", s.server.Addr)
 	return s.server.ListenAndServe()
 }
 

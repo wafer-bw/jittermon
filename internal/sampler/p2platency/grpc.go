@@ -271,7 +271,7 @@ func (c Client) Poll(ctx context.Context) error {
 }
 
 func (c *Client) Start(ctx context.Context) error {
-	c.Log = c.Log.With("id", c.ID, "name", clientName, "address", c.Address)
+	c.Log = c.Log.With("id", c.ID, "name", clientName, "addr", c.Address)
 	c.Log.Info("starting")
 
 	defer close(c.StoppedCh)
@@ -362,7 +362,7 @@ func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.Poll
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	s.Log = s.Log.With("id", s.ID, "name", serverName, "address", s.Address)
+	s.Log = s.Log.With("id", s.ID, "name", serverName, "addr", s.Address)
 	s.Log.Info("starting")
 
 	defer close(s.StoppedCh)

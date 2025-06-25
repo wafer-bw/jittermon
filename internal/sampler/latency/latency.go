@@ -75,7 +75,7 @@ func (c Client) Poll(ctx context.Context) error {
 }
 
 func (c *Client) Start(ctx context.Context) error {
-	c.Log = c.Log.With("id", c.ID, "name", clientName, "address", c.Address)
+	c.Log = c.Log.With("id", c.ID, "name", clientName, "addr", c.Address)
 	c.Log.Info("starting")
 
 	defer close(c.StoppedCh)
