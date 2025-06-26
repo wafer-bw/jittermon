@@ -80,6 +80,8 @@ docker compose -f demo/docker-compose-remote-p2p.yml down
 ```
 
 ## TODOs
+- elevated packet loss sometimes causes stream specific jitter to stop being
+  tracked, likely something to do with grpc connection?
 - running locally should serve webpage with simple charts
   - https://developers.google.com/chart/interactive/docs/gallery/linechart
   - use htmx for frontend
