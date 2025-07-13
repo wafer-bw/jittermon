@@ -1,6 +1,7 @@
 package store
 
 import (
+	_ "embed"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -185,9 +186,11 @@ func New(opts ...Option) (*Store, error) {
 		return nil, err
 	}
 
+	s.log.Warn("mem store server temporarily disabled") // TODO: support embeding templates then add this back.
+
 	s.server = &http.Server{
 		Addr:         ":8083", // TODO: make configurable.
-		Handler:      s.Router(),
+		Handler:      http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Error(w, "not implemented", 500) }), // s.Router(),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		IdleTimeout:  idleTimeout,

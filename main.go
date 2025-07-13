@@ -35,7 +35,7 @@ type config struct {
 	MetricsAddr           string                `envconfig:"METRICS_ADDR" default:""`
 	LogLevel              slog.Level            `envconfig:"LOG_LEVEL" default:"INFO"`
 	UseLogRecorder        bool                  `envconfig:"USE_LOG_RECORDER" default:"false"`
-	UseLocalStoreRecorder bool                  `envconfig:"USE_LOCAL_STORE_RECORDER" default:"true"`
+	UseLocalStoreRecorder bool                  `envconfig:"USE_LOCAL_STORE_RECORDER" default:"false"`
 }
 
 func main() {

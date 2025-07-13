@@ -3,7 +3,7 @@ FROM golang:1.24.4 AS builder
 WORKDIR /jittermon
 COPY . .
 RUN go get -v ./... \
-    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s -extldflags '-static'" -a -o /go/bin/main .
+    && CGO_ENABLED=0 go build -ldflags="-w -s -extldflags '-static'" -a -o /go/bin/main .
 
 # build image
 # TODO: use scratch once traceroute has pure go implementation.
