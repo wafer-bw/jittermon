@@ -241,8 +241,11 @@ func (c Client) Poll(ctx context.Context) error {
 	req.SetId(c.ID)
 	req.SetTimestamp(timestamppb.New(start))
 
+	pCtx, cancel := context.WithTimeout(ctx, c.Interval)
+	defer cancel()
+
 	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
-	rsp, err := c.Client.Poll(ctx, req)
+	rsp, err := c.Client.Poll(pCtx, req)
 	if err != nil {
 		c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeLostPackets, Val: struct{}{}, Labels: labels})
 		c.Log.Error("poll failed", "err", err)
