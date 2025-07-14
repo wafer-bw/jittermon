@@ -241,7 +241,7 @@ func (c Client) Poll(ctx context.Context) error {
 	req.SetId(c.ID)
 	req.SetTimestamp(timestamppb.New(start))
 
-	pCtx, cancel := context.WithTimeout(ctx, c.Interval)
+	pCtx, cancel := context.WithTimeout(ctx, c.Interval*2)
 	defer cancel()
 
 	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
