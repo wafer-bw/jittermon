@@ -12,6 +12,7 @@ import (
 	"github.com/wafer-bw/jittermon/internal/sampler/latency"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
 	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
+	"golang.org/x/sync/errgroup"
 )
 
 type config struct {
@@ -43,10 +44,7 @@ func main() {
 }
 
 func run(ctx context.Context, log *slog.Logger, conf config) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	errCh := make(chan error)
+	eg, ctx := errgroup.WithContext(ctx)
 
 	recorders := []recorder.ChainLink{recorder.MetricFilter(conf.Metrics...)}
 	if conf.MetricsAddr != "" {
@@ -57,7 +55,7 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 		if err != nil {
 			return err
 		}
-		go func() { errCh <- prometheus.Run(ctx) }()
+		eg.Go(func() error { return prometheus.Run(ctx) })
 		recorders = append(recorders, prometheus.DefaultRecorders()...)
 	}
 	chain := recorder.Chain(recorders...)
@@ -71,7 +69,7 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 		if err != nil {
 			return err
 		}
-		go func() { errCh <- client.Run(ctx) }()
+		eg.Go(func() error { return client.Run(ctx) })
 	}
 
 	if conf.P2PLatencyListenAddr != "" {
@@ -82,7 +80,7 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 		if err != nil {
 			return err
 		}
-		go func() { errCh <- server.Run(ctx) }()
+		eg.Go(func() error { return server.Run(ctx) })
 	}
 
 	for _, addr := range conf.P2PLatencySendAddrs {
@@ -94,7 +92,7 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 		if err != nil {
 			return err
 		}
-		go func() { errCh <- client.Run(ctx) }()
+		eg.Go(func() error { return client.Run(ctx) })
 	}
 
 	for _, addr := range conf.TraceSendAddrs {
@@ -107,17 +105,8 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 		if err != nil {
 			return err
 		}
-		go func() { errCh <- client.Run(ctx) }()
+		eg.Go(func() error { return client.Run(ctx) })
 	}
 
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return err
-		}
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-
-	return nil
+	return eg.Wait()
 }
