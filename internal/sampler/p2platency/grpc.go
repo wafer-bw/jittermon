@@ -61,6 +61,16 @@ func WithGRPCClientInterval(interval time.Duration) GRPCClientOption {
 	}
 }
 
+func WithGRPCClientTimeout(timeout time.Duration) GRPCClientOption {
+	return func(c *GRPCClient) error {
+		if timeout <= 0 {
+			return nil
+		}
+		c.timeout = timeout
+		return nil
+	}
+}
+
 func WithGRPCClientLog(log *slog.Logger) GRPCClientOption {
 	return func(c *GRPCClient) error {
 		if log == nil {

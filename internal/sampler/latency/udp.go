@@ -50,6 +50,16 @@ func WithUDPInterval(interval time.Duration) UDPOption {
 	}
 }
 
+func WithUDPTimeout(timeout time.Duration) UDPOption {
+	return func(c *UDPClient) error {
+		if timeout <= 0 {
+			return nil
+		}
+		c.timeout = timeout
+		return nil
+	}
+}
+
 func WithUDPLog(log *slog.Logger) UDPOption {
 	return func(c *UDPClient) error {
 		if log == nil {
@@ -148,7 +158,7 @@ func (c *UDPClient) poll(_ context.Context) error {
 	}
 	defer conn.Close()
 
-	if err := conn.SetReadDeadline(time.Now().Add(c.interval)); err != nil { // TODO: determine what to set this to, too early and we report non-lost packets.
+	if err := conn.SetReadDeadline(time.Now().Add(c.timeout)); err != nil {
 		return fmt.Errorf("set read deadline: %w", err)
 	}
 
