@@ -5,22 +5,52 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/wafer-bw/jittermon/internal/littleid"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
 const (
+	Name string = "http_prometheus_server"
+
 	namespace    string        = "jittermon"     // TODO: make configurable.
 	readTimeout  time.Duration = 1 * time.Second // TODO: make configurable.
 	writeTimeout time.Duration = 2 * time.Second // TODO: make configurable.
 	idleTimeout  time.Duration = 5 * time.Second // TODO: make configurable.
 )
 
+var defaultLog = slog.New(slog.DiscardHandler)
+
+type Option func(*Prometheus) error
+
+func WithLog(log *slog.Logger) Option {
+	return func(p *Prometheus) error {
+		if log == nil {
+			return nil
+		}
+		p.log = log
+		return nil
+	}
+}
+
+func WithID(id string) Option {
+	return func(p *Prometheus) error {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return nil
+		}
+		p.id = id
+		return nil
+	}
+}
+
 type Prometheus struct {
+	id         string
 	log        *slog.Logger
 	mu         *sync.Mutex
 	server     *http.Server
@@ -30,14 +60,21 @@ type Prometheus struct {
 
 // New returns a new [Prometheus] which must be started and stopped using
 // [Prometheus.Start] and [Prometheus.Stop] respectively.
-func New(addr string, log *slog.Logger) (*Prometheus, error) {
-	r := &Prometheus{
-		mu:  &sync.Mutex{},
-		log: log,
+func New(addr string, options ...Option) (*Prometheus, error) {
+	if addr == "" {
+		return nil, fmt.Errorf("address must not be empty")
 	}
 
-	if log == nil {
-		r.log = slog.New(slog.DiscardHandler)
+	r := &Prometheus{
+		id:  littleid.New(),
+		mu:  &sync.Mutex{},
+		log: defaultLog,
+	}
+
+	for _, option := range options {
+		if err := option(r); err != nil {
+			return nil, fmt.Errorf("apply option: %w", err)
+		}
 	}
 
 	r.server = &http.Server{
@@ -47,6 +84,8 @@ func New(addr string, log *slog.Logger) (*Prometheus, error) {
 		WriteTimeout: writeTimeout,
 		IdleTimeout:  idleTimeout,
 	}
+
+	r.log = r.log.With("name", Name, "id", r.id, "addr", addr)
 
 	return r, nil
 }
@@ -136,14 +175,24 @@ func (r *Prometheus) RecordIncrement(next recorder.Recorder) recorder.Recorder {
 	})
 }
 
-// Start the prometheus metrics endpoint server.
-func (r *Prometheus) Start(ctx context.Context) error {
-	r.log.Info("starting prometheus server", "addr", r.server.Addr)
-	return r.server.ListenAndServe()
-}
+// Run the prometheus metrics endpoint server.
+func (r *Prometheus) Run(ctx context.Context) error {
+	r.log.InfoContext(ctx, "starting")
 
-// Stop the prometheus metrics endpoint server.
-func (r *Prometheus) Stop(ctx context.Context) error {
-	r.log.Debug("stopping prometheus server")
-	return r.server.Shutdown(ctx)
+	errCh := make(chan error)
+	go func() {
+		if err := r.server.ListenAndServe(); err != nil {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		r.log.WarnContext(ctx, "context done, stopping", "err", ctx.Err())
+		return ctx.Err()
+	case err := <-errCh:
+		r.log.ErrorContext(ctx, "server failed", "err", err)
+		return err
+	}
 }
