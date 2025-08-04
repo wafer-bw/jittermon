@@ -21,7 +21,7 @@ import (
 func BenchmarkPrometheus_RecordDuration(b *testing.B) {
 	ctx := b.Context()
 
-	p, err := prometheus.New(":8080", nil)
+	p, err := prometheus.New(":8080")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func BenchmarkPrometheus_RecordDuration(b *testing.B) {
 func BenchmarkPrometheus_RecordIncrement(b *testing.B) {
 	ctx := b.Context()
 
-	p, err := prometheus.New(":8080", nil)
+	p, err := prometheus.New(":8080")
 	if err != nil {
 		b.Fatal(err)
 	}
