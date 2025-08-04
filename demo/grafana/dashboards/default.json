@@ -75,8 +75,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "#EAB839",
@@ -179,8 +178,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "#00000000",
-                      "value": null
+                      "color": "#00000000"
                     }
                   ]
                 }
@@ -244,7 +242,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.0",
       "targets": [
         {
           "datasource": {
@@ -339,7 +337,7 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
-            "drawStyle": "line",
+            "drawStyle": "points",
             "fillOpacity": 0,
             "gradientMode": "none",
             "hideFrom": {
@@ -353,7 +351,7 @@
               "fill": "solid"
             },
             "lineWidth": 1,
-            "pointSize": 5,
+            "pointSize": 4,
             "scaleDistribution": {
               "type": "linear"
             },
@@ -373,8 +371,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -411,11 +408,11 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.0",
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(rate(jittermon_hop_rtt_duration_seconds_sum{job=\"jittermon\", hop=~\"[3-9]\"}[$__rate_interval])) by (hop, addr, hostname) / sum(rate(jittermon_hop_rtt_duration_seconds_count{job=\"jittermon\", hop=~\"[3-9]\"}[$__rate_interval])) by (hop, addr, hostname) > 0",
+          "expr": "sum(rate(jittermon_hop_rtt_duration_seconds_sum{job=\"jittermon\"}[$__rate_interval])) by (hop, addr, hostname) / sum(rate(jittermon_hop_rtt_duration_seconds_count{job=\"jittermon\"}[$__rate_interval])) by (hop, addr, hostname) > 0",
           "format": "time_series",
           "legendFormat": "{{hop}} ({{hostname}})",
           "range": true,
@@ -473,8 +470,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -566,7 +562,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.0",
       "targets": [
         {
           "datasource": {
@@ -611,7 +607,7 @@
         "sortOrder": "Descending",
         "wrapLogMessage": false
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.0",
       "targets": [
         {
           "datasource": {
@@ -631,7 +627,7 @@
   ],
   "preload": false,
   "refresh": "5s",
-  "schemaVersion": 40,
+  "schemaVersion": 41,
   "tags": [],
   "templating": {
     "list": []
@@ -656,6 +652,5 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 40,
-  "weekStart": ""
+  "version": 3
 }

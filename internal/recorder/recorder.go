@@ -54,6 +54,21 @@ type Sample struct {
 	Labels Labels
 }
 
+func (s Sample) GetDuration() (time.Duration, bool) {
+	d, ok := s.Val.(time.Duration)
+	if !ok {
+		dp, ok := s.Val.(*time.Duration)
+		if !ok {
+			return 0, false
+		} else if dp == nil {
+			return 0, false
+		}
+		d = *dp
+	}
+
+	return d, true
+}
+
 // ChainLink is a function that accepts and returns a [Recorder]. The returned
 // [Recorder] should call `next.Record()` to continue the chain.
 type ChainLink func(next Recorder) Recorder
@@ -77,7 +92,7 @@ func (f RecorderFunc) Record(ctx context.Context, s Sample) {
 // Chain [ChainLink]s together to create a single [Recorder].
 func Chain(recorders ...ChainLink) Recorder {
 	// TODO: consider making receiver of type []ChainLink.
-	terminal := RecorderFunc(func(ctx context.Context, s Sample) { return })
+	terminal := RecorderFunc(func(ctx context.Context, s Sample) {})
 	if len(recorders) == 0 {
 		return terminal
 	}
@@ -89,4 +104,22 @@ func Chain(recorders ...ChainLink) Recorder {
 	}
 
 	return r
+}
+
+// MetricsFilter returns a [ChainLink] that filters out metric samples
+// that are not in the provided list of [SampleType]s.
+func MetricFilter(metrics ...SampleType) func(next Recorder) Recorder {
+	allowList := map[string]struct{}{}
+	for _, metric := range metrics {
+		allowList[string(metric)] = struct{}{}
+	}
+
+	return func(next Recorder) Recorder {
+		return RecorderFunc(func(ctx context.Context, s Sample) {
+			if _, ok := allowList[string(s.Type)]; ok {
+				next.Record(ctx, s)
+				return
+			}
+		})
+	}
 }

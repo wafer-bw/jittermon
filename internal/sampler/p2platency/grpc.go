@@ -150,8 +150,6 @@ func WithServerReflection(enabled bool) Option {
 	}
 }
 
-// TODO: WithEnv option.
-
 func NewPeer(options ...Option) (*Peer, error) {
 	p := &Peer{
 		id:            littleid.New(),
@@ -220,10 +218,7 @@ func (p *Peer) Stop(ctx context.Context) error {
 	case <-ctx.Done():
 	}
 
-	// TODO: this shouldn't be used, it should just be based on the ctx passed
-	// to stop.
-	var timeout = 60 * time.Second
-	return p.group.Stop(ctx, timeout)
+	return p.group.Stop(ctx)
 }
 
 type Client struct {
@@ -246,8 +241,11 @@ func (c Client) Poll(ctx context.Context) error {
 	req.SetId(c.ID)
 	req.SetTimestamp(timestamppb.New(start))
 
+	pCtx, cancel := context.WithTimeout(ctx, c.Interval*2)
+	defer cancel()
+
 	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
-	rsp, err := c.Client.Poll(ctx, req)
+	rsp, err := c.Client.Poll(pCtx, req)
 	if err != nil {
 		c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeLostPackets, Val: struct{}{}, Labels: labels})
 		c.Log.Error("poll failed", "err", err)
@@ -276,7 +274,7 @@ func (c Client) Poll(ctx context.Context) error {
 }
 
 func (c *Client) Start(ctx context.Context) error {
-	c.Log = c.Log.With("id", c.ID, "name", clientName, "address", c.Address)
+	c.Log = c.Log.With("id", c.ID, "name", clientName, "addr", c.Address)
 	c.Log.Info("starting")
 
 	defer close(c.StoppedCh)
@@ -367,7 +365,7 @@ func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.Poll
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	s.Log = s.Log.With("id", s.ID, "name", serverName, "address", s.Address)
+	s.Log = s.Log.With("id", s.ID, "name", serverName, "addr", s.Address)
 	s.Log.Info("starting")
 
 	defer close(s.StoppedCh)
@@ -385,9 +383,22 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	defer listener.Close()
 
+	errCh := make(chan error)
+	go func() {
+		if err := s.Server.Serve(listener); err != nil {
+			errCh <- fmt.Errorf("failed to serve %s[%s]: %w", serverName, s.ID, err)
+		}
+		close(errCh)
+	}()
+
 	close(s.StartedCh)
 
-	return s.Server.Serve(listener)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errCh:
+		return err
+	}
 }
 
 func (s *Server) Stop(ctx context.Context) error {

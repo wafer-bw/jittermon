@@ -158,7 +158,8 @@ func TestPeer_Start(t *testing.T) {
 
 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(context.Context, recorder.Sample) {
 			cancel()
-		}).AnyTimes()
+		}).Times(1)
+		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).AnyTimes()
 
 		err = p.Start(ctx)
 		require.Error(t, err)

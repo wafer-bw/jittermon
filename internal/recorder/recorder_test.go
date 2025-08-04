@@ -15,8 +15,8 @@ func TestLabels_Keys(t *testing.T) {
 		t.Parallel()
 
 		l := recorder.Labels{
-			{K: "foo", V: "bar"},
-			{K: "baz", V: "qux"},
+			recorder.Label{K: "foo", V: "bar"},
+			recorder.Label{K: "baz", V: "qux"},
 		}
 
 		keys := l.Keys()
@@ -34,8 +34,8 @@ func TestLabels_Values(t *testing.T) {
 		t.Parallel()
 
 		l := recorder.Labels{
-			{K: "foo", V: "bar"},
-			{K: "baz", V: "qux"},
+			recorder.Label{K: "foo", V: "bar"},
+			recorder.Label{K: "baz", V: "qux"},
 		}
 
 		values := l.Values()
@@ -105,5 +105,25 @@ func TestNoOp(t *testing.T) {
 
 	require.NotPanics(t, func() {
 		recorder.NoOp.Record(t.Context(), recorder.Sample{})
+	})
+}
+
+func TestMetricFilter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("filters recorder calls by sample type", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		f := recorder.MetricFilter(recorder.SampleType("bar"))
+		r := f(recorder.RecorderFunc(func(ctx context.Context, s recorder.Sample) {
+			require.NotEqual(t, recorder.SampleType("foo"), s.Type)
+			require.Equal(t, recorder.SampleType("bar"), s.Type)
+			// require.Equal(t, recorder.SampleType("bar"), s.Type)
+		}))
+
+		r.Record(ctx, recorder.Sample{Type: "foo"})
+		r.Record(ctx, recorder.Sample{Type: "bar"})
 	})
 }

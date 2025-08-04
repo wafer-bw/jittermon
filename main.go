@@ -11,26 +11,31 @@ import (
 	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/recorder/logger"
+	"github.com/wafer-bw/jittermon/internal/recorder/prometheus"
+	"github.com/wafer-bw/jittermon/internal/recorder/store"
 	"github.com/wafer-bw/jittermon/internal/sampler/latency"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
 	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
 )
 
-const shutdownTimeout time.Duration = 250 * time.Millisecond
+const shutdownTimeout time.Duration = 1 * time.Second
 
 type config struct {
-	PeerID               string                `envconfig:"PEER_ID" default:""`
-	LatencySendAddrs     []string              `envconfig:"LATENCY_SEND_ADDRS" default:"8.8.8.8:53"`
-	LatencyInterval      time.Duration         `envconfig:"LATENCY_INTERVAL" default:"1s"`
-	P2PLatencyListenAddr string                `envconfig:"P2P_LATENCY_LISTEN_ADDR" default:""`
-	P2PLatencySendAddrs  []string              `envconfig:"P2P_LATENCY_SEND_ADDRS" default:""`
-	P2PLatencyInterval   time.Duration         `envconfig:"P2P_LATENCY_INTERVAL" default:"1s"`
-	TraceSendAddrs       []string              `envconfig:"TRACE_SEND_ADDRS" default:""`
-	TraceInterval        time.Duration         `envconfig:"TRACE_INTERVAL" default:"1s"`
-	TraceMaxHops         int                   `envconfig:"TRACE_MAX_HOPS" default:"12"`
-	Metrics              []recorder.SampleType `envconfig:"METRICS" default:"rtt,hop_rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,rtt_jitter"`
-	MetricsAddr          string                `envconfig:"METRICS_ADDR" default:""`
-	LogLevel             slog.Level            `envconfig:"LOG_LEVEL" default:"INFO"`
+	PeerID                string                `envconfig:"PEER_ID" default:""`
+	LatencySendAddrs      []string              `envconfig:"LATENCY_SEND_ADDRS" default:"8.8.8.8:53"`
+	LatencyInterval       time.Duration         `envconfig:"LATENCY_INTERVAL" default:"0.25s"`
+	P2PLatencyListenAddr  string                `envconfig:"P2P_LATENCY_LISTEN_ADDR" default:""`
+	P2PLatencySendAddrs   []string              `envconfig:"P2P_LATENCY_SEND_ADDRS" default:""`
+	P2PLatencyInterval    time.Duration         `envconfig:"P2P_LATENCY_INTERVAL" default:"1s"`
+	TraceSendAddrs        []string              `envconfig:"TRACE_SEND_ADDRS" default:""`
+	TraceInterval         time.Duration         `envconfig:"TRACE_INTERVAL" default:"1s"`
+	TraceMaxHops          int                   `envconfig:"TRACE_MAX_HOPS" default:"12"`
+	Metrics               []recorder.SampleType `envconfig:"METRICS" default:"rtt,hop_rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,rtt_jitter"`
+	MetricsAddr           string                `envconfig:"METRICS_ADDR" default:""`
+	LogLevel              slog.Level            `envconfig:"LOG_LEVEL" default:"INFO"`
+	UseLogRecorder        bool                  `envconfig:"USE_LOG_RECORDER" default:"false"`
+	UseLocalStoreRecorder bool                  `envconfig:"USE_LOCAL_STORE_RECORDER" default:"false"`
 }
 
 func main() {
@@ -50,9 +55,22 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	group := graceful.Group{}
 	recorders := []recorder.ChainLink{recorder.MetricFilter(conf.Metrics...)}
 	exitSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
+	localStore, err := store.New(store.WithLogger(log))
+	if err != nil {
+		return err
+	}
+	group = append(group, localStore)
+
+	if conf.UseLogRecorder {
+		recorders = append(recorders, logger.Recorder(log))
+	}
+
+	if conf.UseLocalStoreRecorder {
+		recorders = append(recorders, localStore.Recorder)
+	}
 
 	if conf.MetricsAddr != "" {
-		prometheus, err := recorder.NewPrometheus(conf.MetricsAddr, log)
+		prometheus, err := prometheus.New(conf.MetricsAddr, log)
 		if err != nil {
 			return err
 		}
@@ -104,7 +122,10 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 		group = append(group, traceRouteSampler)
 	}
 
-	if err := group.Run(ctx, shutdownTimeout, exitSignals...); err != nil {
+	if err := group.Run(ctx,
+		graceful.WithStopTimeout(shutdownTimeout),
+		graceful.WithStopSignals(exitSignals...),
+	); err != nil {
 		return err
 	}
 

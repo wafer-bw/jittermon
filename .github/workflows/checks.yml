@@ -4,9 +4,23 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "internal/**"
+      - ".github/workflows/**/*.yml"
+      - "scripts/**"
+      - "main.go"
+      - "go.mod"
+      - "go.sum"
   pull_request:
     branches:
       - main
+    paths:
+      - "internal/**"
+      - ".github/workflows/**/*.yml"
+      - "scripts/**"
+      - "main.go"
+      - "go.mod"
+      - "go.sum"
 
 jobs:
 

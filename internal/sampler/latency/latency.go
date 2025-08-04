@@ -39,15 +39,16 @@ func (c Client) Poll(ctx context.Context) error {
 	start := time.Now()
 	labels := rec.Labels{{K: "src", V: c.ID}, {K: "dst", V: c.Address}}
 
+	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
 	conn, err := net.Dial("udp", c.Address)
 	if err != nil {
+		c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeLostPackets, Val: struct{}{}, Labels: labels})
 		c.Log.Error("failed to dial", "err", err)
 		return err
 	}
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(c.Interval))
 
-	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
 	if _, err := conn.Write(packet); err != nil {
 		c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeLostPackets, Val: struct{}{}, Labels: labels})
 		c.Log.Error("failed to send packet", "err", err)
@@ -74,7 +75,7 @@ func (c Client) Poll(ctx context.Context) error {
 }
 
 func (c *Client) Start(ctx context.Context) error {
-	c.Log = c.Log.With("id", c.ID, "name", clientName, "address", c.Address)
+	c.Log = c.Log.With("id", c.ID, "name", clientName, "addr", c.Address)
 	c.Log.Info("starting")
 
 	defer close(c.StoppedCh)
