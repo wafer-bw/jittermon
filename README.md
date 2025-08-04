@@ -61,14 +61,14 @@ docker compose -f demo/docker-compose-remote-p2p.yml down
 ```
 
 ## TODOs
-- rename Poll to Sample. on samplers.
-- split samplers into package per type.
-- cleanup package names then cleanup type names.
 - simplify recorder interface by using interface assertion to:
   - determine sample type.
   - determine labels.
   - determine timestamp.
   - no longer need `Sample` or `SampleType`
+- consider organizing samplers into subdirectories for simpler names.
+- non-exec traceroute.
+- icmp latency.
 - log recorder.
 - add a way to request samplers by name and/or redefine config as more
   structured.

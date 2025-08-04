@@ -1,6 +1,6 @@
-package p2platency_test
+package grpcp2platency_test
 
-//go:generate go run go.uber.org/mock/mockgen -source=ports.go -destination=ports_mocks_test.go -package=p2platency_test
+//go:generate go run go.uber.org/mock/mockgen -source=grpc.go -destination=grpc_mocks_test.go -package=grpcp2platency_test
 
 import (
 	"context"
@@ -10,14 +10,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
-	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/pollpb"
+	"github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency"
+	"github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency/internal/pollpb"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestGRPCClient_Poll(t *testing.T) {
+func TestClient_Poll(t *testing.T) {
 	t.Parallel()
 
 	addr := "localhost:12345"
@@ -28,10 +28,10 @@ func TestGRPCClient_Poll(t *testing.T) {
 		ctx := t.Context()
 		start := time.Now()
 		jitter := 5 * time.Millisecond
-		mockClient := NewMockGRPCClientPoller(gomock.NewController(t))
+		mockClient := NewMockClientPoller(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		client, err := p2platency.NewGRPCClient(addr, mockRecorder, p2platency.WithGRPCClientConn(mockClient))
+		client, err := grpcp2platency.NewClient(addr, mockRecorder, grpcp2platency.WithClientConn(mockClient))
 		require.NoError(t, err)
 
 		resp := &pollpb.PollResponse{}
@@ -64,10 +64,10 @@ func TestGRPCClient_Poll(t *testing.T) {
 
 		ctx := t.Context()
 		jitter := 5 * time.Millisecond
-		mockClient := NewMockGRPCClientPoller(gomock.NewController(t))
+		mockClient := NewMockClientPoller(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		client, err := p2platency.NewGRPCClient(addr, mockRecorder, p2platency.WithGRPCClientConn(mockClient))
+		client, err := grpcp2platency.NewClient(addr, mockRecorder, grpcp2platency.WithClientConn(mockClient))
 		require.NoError(t, err)
 
 		resp := &pollpb.PollResponse{}
@@ -93,10 +93,10 @@ func TestGRPCClient_Poll(t *testing.T) {
 
 		ctx := t.Context()
 		jitter := 5 * time.Millisecond
-		mockClient := NewMockGRPCClientPoller(gomock.NewController(t))
+		mockClient := NewMockClientPoller(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		client, err := p2platency.NewGRPCClient(addr, mockRecorder, p2platency.WithGRPCClientConn(mockClient))
+		client, err := grpcp2platency.NewClient(addr, mockRecorder, grpcp2platency.WithClientConn(mockClient))
 		require.NoError(t, err)
 
 		resp := &pollpb.PollResponse{}
@@ -113,10 +113,10 @@ func TestGRPCClient_Poll(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		mockClient := NewMockGRPCClientPoller(gomock.NewController(t))
+		mockClient := NewMockClientPoller(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		client, err := p2platency.NewGRPCClient(addr, mockRecorder, p2platency.WithGRPCClientConn(mockClient))
+		client, err := grpcp2platency.NewClient(addr, mockRecorder, grpcp2platency.WithClientConn(mockClient))
 		require.NoError(t, err)
 
 		resp := &pollpb.PollResponse{}
@@ -130,7 +130,7 @@ func TestGRPCClient_Poll(t *testing.T) {
 	})
 }
 
-func TestGRPCServer_Poll(t *testing.T) {
+func TestServer_Poll(t *testing.T) {
 	t.Parallel()
 
 	addr := "localhost:12345"
@@ -143,7 +143,7 @@ func TestGRPCServer_Poll(t *testing.T) {
 		clientID, serverID := "client", "server"
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		server, err := p2platency.NewGRPCServer(addr, mockRecorder, p2platency.WithGRPCServerID(serverID))
+		server, err := grpcp2platency.NewServer(addr, mockRecorder, grpcp2platency.WithServerID(serverID))
 		require.NoError(t, err)
 
 		req := &pollpb.PollRequest{}
@@ -180,7 +180,7 @@ func TestGRPCServer_Poll(t *testing.T) {
 		start := time.Now()
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		server, err := p2platency.NewGRPCServer(addr, mockRecorder)
+		server, err := grpcp2platency.NewServer(addr, mockRecorder)
 		require.NoError(t, err)
 
 		req := &pollpb.PollRequest{}
@@ -196,7 +196,7 @@ func TestGRPCServer_Poll(t *testing.T) {
 		ctx := t.Context()
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		server, err := p2platency.NewGRPCServer(addr, mockRecorder)
+		server, err := grpcp2platency.NewServer(addr, mockRecorder)
 		require.NoError(t, err)
 
 		req := &pollpb.PollRequest{}

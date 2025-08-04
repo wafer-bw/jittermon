@@ -1,6 +1,6 @@
-package traceroute_test
+package exectraceroute_test
 
-//go:generate go run go.uber.org/mock/mockgen -source=ports.go -destination=ports_mocks_test.go -package=traceroute_test
+//go:generate go run go.uber.org/mock/mockgen -source=traceroute.go -destination=traceroute_mocks_test.go -package=exectraceroute_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
+	"github.com/wafer-bw/jittermon/internal/sampler/exectraceroute"
 	"go.uber.org/mock/gomock"
 )
 
@@ -24,14 +24,14 @@ func TestTraceRoute_Poll(t *testing.T) {
 		mockTracer := NewMockTracer(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 		addr := "1.1.1.1"
-		hops := traceroute.Hops{
+		hops := exectraceroute.Hops{
 			{Addr: "192.168.1.1", Name: "192.168.1.1", Hop: 1, RTT: ptr(2 * time.Millisecond)},
 			{Addr: addr, Name: "something.example.com", Hop: 2, RTT: ptr(4 * time.Millisecond)},
 		}
 
-		c, err := traceroute.NewTraceRoute(addr, mockRecorder,
-			traceroute.WithInterval(10*time.Millisecond),
-			traceroute.WithTracer(mockTracer),
+		c, err := exectraceroute.NewTraceRoute(addr, mockRecorder,
+			exectraceroute.WithInterval(10*time.Millisecond),
+			exectraceroute.WithTracer(mockTracer),
 		)
 		require.NoError(t, err)
 
@@ -63,9 +63,9 @@ func TestTraceRoute_Poll(t *testing.T) {
 		mockTracer := NewMockTracer(gomock.NewController(t))
 		mockRecorder := NewMockRecorder(gomock.NewController(t))
 
-		tr, err := traceroute.NewTraceRoute(addr, mockRecorder,
-			traceroute.WithInterval(10*time.Millisecond),
-			traceroute.WithTracer(mockTracer),
+		tr, err := exectraceroute.NewTraceRoute(addr, mockRecorder,
+			exectraceroute.WithInterval(10*time.Millisecond),
+			exectraceroute.WithTracer(mockTracer),
 		)
 		require.NoError(t, err)
 

@@ -1,4 +1,4 @@
-package traceroute
+package exectraceroute
 
 import (
 	"context"
@@ -12,9 +12,17 @@ import (
 	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
-const Name string = "exec_traceroute_client"
+type Tracer interface {
+	Trace(ctx context.Context, dst string) (Hops, error)
+}
+
+type Recorder interface {
+	recorder.Recorder
+}
 
 const (
+	Name string = "exec_traceroute_client"
+
 	defaultMaxHops  int           = 24
 	defaultInterval time.Duration = 1 * time.Second
 	defaultTimeout  time.Duration = defaultInterval * time.Duration(2)

@@ -1,4 +1,4 @@
-package latency
+package udplatency
 
 import (
 	"context"
@@ -13,8 +13,12 @@ import (
 	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
+type Recorder interface {
+	recorder.Recorder
+}
+
 const (
-	UDPName string = "udp_latency_client"
+	Name string = "udp_latency_client"
 
 	defaultInterval time.Duration = 1 * time.Second
 	defaultTimeout  time.Duration = defaultInterval * time.Duration(2)
@@ -27,10 +31,10 @@ var (
 	packet     = []byte{0x12, 0x34, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 )
 
-type UDPOption func(*UDPClient) error
+type Option func(*Client) error
 
-func WithUDPID(id string) UDPOption {
-	return func(c *UDPClient) error {
+func WithID(id string) Option {
+	return func(c *Client) error {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			return nil
@@ -40,8 +44,8 @@ func WithUDPID(id string) UDPOption {
 	}
 }
 
-func WithUDPInterval(interval time.Duration) UDPOption {
-	return func(c *UDPClient) error {
+func WithInterval(interval time.Duration) Option {
+	return func(c *Client) error {
 		if interval <= 0 {
 			return nil
 		}
@@ -50,8 +54,8 @@ func WithUDPInterval(interval time.Duration) UDPOption {
 	}
 }
 
-func WithUDPTimeout(timeout time.Duration) UDPOption {
-	return func(c *UDPClient) error {
+func WithTimeout(timeout time.Duration) Option {
+	return func(c *Client) error {
 		if timeout <= 0 {
 			return nil
 		}
@@ -60,8 +64,8 @@ func WithUDPTimeout(timeout time.Duration) UDPOption {
 	}
 }
 
-func WithUDPLog(log *slog.Logger) UDPOption {
-	return func(c *UDPClient) error {
+func WithLog(log *slog.Logger) Option {
+	return func(c *Client) error {
 		if log == nil {
 			return nil
 		}
@@ -70,7 +74,7 @@ func WithUDPLog(log *slog.Logger) UDPOption {
 	}
 }
 
-type UDPClient struct {
+type Client struct {
 	id       string
 	address  string
 	interval time.Duration
@@ -80,14 +84,14 @@ type UDPClient struct {
 	jitter   *jitter.Buffer
 }
 
-func NewUDP(address string, recorder Recorder, options ...UDPOption) (*UDPClient, error) {
+func New(address string, recorder Recorder, options ...Option) (*Client, error) {
 	if address == "" {
 		return nil, fmt.Errorf("address cannot be empty")
 	} else if recorder == nil {
 		return nil, fmt.Errorf("recorder cannot be nil")
 	}
 
-	c := &UDPClient{
+	c := &Client{
 		address:  address,
 		recorder: recorder,
 		id:       littleid.New(),
@@ -103,12 +107,12 @@ func NewUDP(address string, recorder Recorder, options ...UDPOption) (*UDPClient
 		}
 	}
 
-	c.log = c.log.With("name", UDPName, "id", c.id, "address", c.address)
+	c.log = c.log.With("name", Name, "id", c.id, "address", c.address)
 
 	return c, nil
 }
 
-func (c *UDPClient) Poll(ctx context.Context) error {
+func (c *Client) Poll(ctx context.Context) error {
 	labels := recorder.Labels{{K: "src", V: c.id}, {K: "dst", V: c.address}}
 
 	start := time.Now()
@@ -131,7 +135,7 @@ func (c *UDPClient) Poll(ctx context.Context) error {
 	return nil
 }
 
-func (c *UDPClient) Run(ctx context.Context) error {
+func (c *Client) Run(ctx context.Context) error {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
 
@@ -151,7 +155,7 @@ func (c *UDPClient) Run(ctx context.Context) error {
 	}
 }
 
-func (c *UDPClient) poll(_ context.Context) error {
+func (c *Client) poll(_ context.Context) error {
 	conn, err := net.Dial("udp", c.address)
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)

@@ -9,9 +9,9 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 	"github.com/wafer-bw/jittermon/internal/recorder/prometheus"
-	"github.com/wafer-bw/jittermon/internal/sampler/latency"
-	"github.com/wafer-bw/jittermon/internal/sampler/p2platency"
-	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
+	"github.com/wafer-bw/jittermon/internal/sampler/exectraceroute"
+	"github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency"
+	"github.com/wafer-bw/jittermon/internal/sampler/udplatency"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -61,10 +61,10 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	chain := recorder.Chain(recorders...)
 
 	for _, addr := range conf.LatencySendAddrs {
-		client, err := latency.NewUDP(addr, chain,
-			latency.WithUDPID(conf.PeerID),
-			latency.WithUDPInterval(conf.LatencyInterval),
-			latency.WithUDPLog(log),
+		client, err := udplatency.New(addr, chain,
+			udplatency.WithID(conf.PeerID),
+			udplatency.WithInterval(conf.LatencyInterval),
+			udplatency.WithLog(log),
 		)
 		if err != nil {
 			return err
@@ -73,9 +73,9 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	}
 
 	if conf.P2PLatencyListenAddr != "" {
-		server, err := p2platency.NewGRPCServer(conf.P2PLatencyListenAddr, chain,
-			p2platency.WithGRPCServerID(conf.PeerID),
-			p2platency.WithGRPCServerLog(log),
+		server, err := grpcp2platency.NewServer(conf.P2PLatencyListenAddr, chain,
+			grpcp2platency.WithServerID(conf.PeerID),
+			grpcp2platency.WithServerLog(log),
 		)
 		if err != nil {
 			return err
@@ -84,10 +84,10 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	}
 
 	for _, addr := range conf.P2PLatencySendAddrs {
-		client, err := p2platency.NewGRPCClient(addr, chain,
-			p2platency.WithGRPCClientID(conf.PeerID),
-			p2platency.WithGRPCClientInterval(conf.P2PLatencyInterval),
-			p2platency.WithGRPCClientLog(log),
+		client, err := grpcp2platency.NewClient(addr, chain,
+			grpcp2platency.WithClientID(conf.PeerID),
+			grpcp2platency.WithClientInterval(conf.P2PLatencyInterval),
+			grpcp2platency.WithClientLog(log),
 		)
 		if err != nil {
 			return err
@@ -96,11 +96,11 @@ func run(ctx context.Context, log *slog.Logger, conf config) error {
 	}
 
 	for _, addr := range conf.TraceSendAddrs {
-		client, err := traceroute.NewTraceRoute(addr, chain,
-			traceroute.WithID(conf.PeerID),
-			traceroute.WithInterval(conf.TraceInterval),
-			traceroute.WithMaxHops(conf.TraceMaxHops),
-			traceroute.WithLog(log),
+		client, err := exectraceroute.NewTraceRoute(addr, chain,
+			exectraceroute.WithID(conf.PeerID),
+			exectraceroute.WithInterval(conf.TraceInterval),
+			exectraceroute.WithMaxHops(conf.TraceMaxHops),
+			exectraceroute.WithLog(log),
 		)
 		if err != nil {
 			return err

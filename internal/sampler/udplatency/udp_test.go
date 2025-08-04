@@ -1,6 +1,6 @@
-package latency_test
+package udplatency_test
 
-//go:generate go run go.uber.org/mock/mockgen -source=ports.go -destination=ports_mocks_test.go -package=latency_test
+//go:generate go run go.uber.org/mock/mockgen -source=udp.go -destination=udp_mocks_test.go -package=udplatency_test
 
 import (
 	"context"
@@ -11,11 +11,11 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/sampler/latency"
+	"github.com/wafer-bw/jittermon/internal/sampler/udplatency"
 	"go.uber.org/mock/gomock"
 )
 
-func TestUDPClient_Poll(t *testing.T) {
+func TestClient_Poll(t *testing.T) {
 	t.Parallel()
 
 	t.Run("successful poll", func(t *testing.T) {
@@ -26,7 +26,7 @@ func TestUDPClient_Poll(t *testing.T) {
 		port, err := freeport.GetFreePort()
 		require.NoError(t, err)
 		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
-		client, err := latency.NewUDP(addr, mockRecorder)
+		client, err := udplatency.New(addr, mockRecorder)
 		require.NoError(t, err)
 
 		readyCh := make(chan struct{})
@@ -96,7 +96,7 @@ func TestUDPClient_Poll(t *testing.T) {
 		port, err := freeport.GetFreePort()
 		require.NoError(t, err)
 		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
-		client, err := latency.NewUDP(addr, mockRecorder)
+		client, err := udplatency.New(addr, mockRecorder)
 		require.NoError(t, err)
 
 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, sample recorder.Sample) {

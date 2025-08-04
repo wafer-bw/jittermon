@@ -1,4 +1,4 @@
-package traceroute
+package exectraceroute
 
 import (
 	"context"

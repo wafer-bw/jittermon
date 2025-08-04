@@ -1,4 +1,4 @@
-package traceroute_test
+package exectraceroute_test
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wafer-bw/jittermon/internal/sampler/traceroute"
+	"github.com/wafer-bw/jittermon/internal/sampler/exectraceroute"
 )
 
 func TestExecTracer_Trace(t *testing.T) {
@@ -16,7 +16,7 @@ func TestExecTracer_Trace(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		expectedHops := traceroute.Hops{
+		expectedHops := exectraceroute.Hops{
 			{Addr: "192.168.1.1", Name: "192.168.1.1", Hop: 1, RTT: ptr(828 * time.Microsecond)},
 			{Addr: "1.1.1.1", Name: "something.example.com", Hop: 2, RTT: ptr(14177 * time.Microsecond)},
 			{Addr: "*", Name: "*", Hop: 3, RTT: nil},
@@ -40,7 +40,7 @@ func TestExecTracer_Trace(t *testing.T) {
 			`, nil
 		}
 
-		tr := &traceroute.ExecTracer{ExecFn: execfn, MaxHops: 10, Timeout: 1 * time.Second}
+		tr := &exectraceroute.ExecTracer{ExecFn: execfn, MaxHops: 10, Timeout: 1 * time.Second}
 		hops, err := tr.Trace(ctx, "8.8.8.8")
 		require.NoError(t, err)
 		require.Equal(t, expectedHops, hops)
@@ -54,7 +54,7 @@ func TestExecTracer_Trace(t *testing.T) {
 			return "", errors.New("error")
 		}
 
-		tr := &traceroute.ExecTracer{ExecFn: execfn}
+		tr := &exectraceroute.ExecTracer{ExecFn: execfn}
 		hops, err := tr.Trace(ctx, "8.8.8.8")
 		require.Error(t, err)
 		require.Empty(t, hops)
@@ -71,7 +71,7 @@ func TestExecTracer_Trace(t *testing.T) {
 			`, nil
 		}
 
-		tr := &traceroute.ExecTracer{ExecFn: execfn}
+		tr := &exectraceroute.ExecTracer{ExecFn: execfn}
 		hops, err := tr.Trace(ctx, "8.8.8.8")
 		require.Error(t, err)
 		require.Empty(t, hops)
@@ -88,7 +88,7 @@ func TestExecTracer_Trace(t *testing.T) {
 			`, nil
 		}
 
-		tr := &traceroute.ExecTracer{ExecFn: execfn}
+		tr := &exectraceroute.ExecTracer{ExecFn: execfn}
 		hops, err := tr.Trace(ctx, "8.8.8.8")
 		require.Error(t, err)
 		require.Empty(t, hops)

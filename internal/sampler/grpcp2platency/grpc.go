@@ -1,4 +1,4 @@
-package p2platency
+package grpcp2platency
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/littleid"
 	"github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/pollpb"
+	"github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency/internal/pollpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
@@ -20,9 +20,17 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type Recorder interface {
+	recorder.Recorder
+}
+
+type ClientPoller interface {
+	pollpb.PollServiceClient
+}
+
 const (
-	GRPCClientName string = "grpc_p2platency_client"
-	GRPCServerName string = "grpc_p2platency_server"
+	ClientName string = "grpc_p2platency_client"
+	ServerName string = "grpc_p2platency_server"
 
 	defaultInterval          time.Duration = 1 * time.Second
 	defaultTimeout           time.Duration = defaultInterval * time.Duration(2)
@@ -38,10 +46,10 @@ var (
 	defaultDialOptions   = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 )
 
-type GRPCClientOption func(*GRPCClient) error
+type ClientOption func(*Client) error
 
-func WithGRPCClientID(id string) GRPCClientOption {
-	return func(c *GRPCClient) error {
+func WithClientID(id string) ClientOption {
+	return func(c *Client) error {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			return nil
@@ -51,8 +59,8 @@ func WithGRPCClientID(id string) GRPCClientOption {
 	}
 }
 
-func WithGRPCClientInterval(interval time.Duration) GRPCClientOption {
-	return func(c *GRPCClient) error {
+func WithClientInterval(interval time.Duration) ClientOption {
+	return func(c *Client) error {
 		if interval <= 0 {
 			return nil
 		}
@@ -61,8 +69,8 @@ func WithGRPCClientInterval(interval time.Duration) GRPCClientOption {
 	}
 }
 
-func WithGRPCClientTimeout(timeout time.Duration) GRPCClientOption {
-	return func(c *GRPCClient) error {
+func WithClientTimeout(timeout time.Duration) ClientOption {
+	return func(c *Client) error {
 		if timeout <= 0 {
 			return nil
 		}
@@ -71,8 +79,8 @@ func WithGRPCClientTimeout(timeout time.Duration) GRPCClientOption {
 	}
 }
 
-func WithGRPCClientLog(log *slog.Logger) GRPCClientOption {
-	return func(c *GRPCClient) error {
+func WithClientLog(log *slog.Logger) ClientOption {
+	return func(c *Client) error {
 		if log == nil {
 			return nil
 		}
@@ -81,14 +89,14 @@ func WithGRPCClientLog(log *slog.Logger) GRPCClientOption {
 	}
 }
 
-func WithGRPCClientDialOptions(opts ...grpc.DialOption) GRPCClientOption {
-	return func(c *GRPCClient) error {
+func WithClientDialOptions(opts ...grpc.DialOption) ClientOption {
+	return func(c *Client) error {
 		c.dialOptions = opts
 		return nil
 	}
 }
 
-type GRPCClient struct {
+type Client struct {
 	id          string
 	address     string
 	interval    time.Duration
@@ -96,17 +104,17 @@ type GRPCClient struct {
 	recorder    Recorder
 	dialOptions []grpc.DialOption
 	log         *slog.Logger
-	conn        GRPCClientPoller
+	conn        ClientPoller
 }
 
-func NewGRPCClient(address string, recorder Recorder, options ...GRPCClientOption) (*GRPCClient, error) {
+func NewClient(address string, recorder Recorder, options ...ClientOption) (*Client, error) {
 	if address == "" {
 		return nil, fmt.Errorf("address cannot be empty")
 	} else if recorder == nil {
 		return nil, fmt.Errorf("recorder cannot be nil")
 	}
 
-	c := &GRPCClient{
+	c := &Client{
 		address:     address,
 		recorder:    recorder,
 		id:          littleid.New(),
@@ -122,12 +130,12 @@ func NewGRPCClient(address string, recorder Recorder, options ...GRPCClientOptio
 		}
 	}
 
-	c.log = c.log.With("name", GRPCClientName, "id", c.id, "address", c.address)
+	c.log = c.log.With("name", ClientName, "id", c.id, "address", c.address)
 
 	return c, nil
 }
 
-func (c GRPCClient) Poll(ctx context.Context) error {
+func (c Client) Poll(ctx context.Context) error {
 	labels := recorder.Labels{{K: "src", V: c.id}, {K: "dst", V: c.address}}
 
 	start := time.Now()
@@ -161,7 +169,7 @@ func (c GRPCClient) Poll(ctx context.Context) error {
 	return nil
 }
 
-func (c *GRPCClient) Run(ctx context.Context) error {
+func (c *Client) Run(ctx context.Context) error {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
 
@@ -190,10 +198,10 @@ func (c *GRPCClient) Run(ctx context.Context) error {
 	}
 }
 
-type GRPCServerOption func(*GRPCServer) error
+type ServerOption func(*Server) error
 
-func WithGRPCServerID(id string) GRPCServerOption {
-	return func(s *GRPCServer) error {
+func WithServerID(id string) ServerOption {
+	return func(s *Server) error {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			return nil
@@ -203,8 +211,8 @@ func WithGRPCServerID(id string) GRPCServerOption {
 	}
 }
 
-func WithGRPCServerProto(proto string) GRPCServerOption {
-	return func(s *GRPCServer) error {
+func WithServerProto(proto string) ServerOption {
+	return func(s *Server) error {
 		if proto == "" {
 			return nil
 		}
@@ -213,22 +221,22 @@ func WithGRPCServerProto(proto string) GRPCServerOption {
 	}
 }
 
-func WithGRPCServerOptions(opts ...grpc.ServerOption) GRPCServerOption {
-	return func(s *GRPCServer) error {
+func WithServerOptions(opts ...grpc.ServerOption) ServerOption {
+	return func(s *Server) error {
 		s.serverOptions = opts
 		return nil
 	}
 }
 
-func WithGRPCServerReflection(enabled bool) GRPCServerOption {
-	return func(s *GRPCServer) error {
+func WithServerReflection(enabled bool) ServerOption {
+	return func(s *Server) error {
 		s.reflectionEnabled = enabled
 		return nil
 	}
 }
 
-func WithGRPCServerLog(log *slog.Logger) GRPCServerOption {
-	return func(s *GRPCServer) error {
+func WithServerLog(log *slog.Logger) ServerOption {
+	return func(s *Server) error {
 		if log == nil {
 			return nil
 		}
@@ -237,7 +245,7 @@ func WithGRPCServerLog(log *slog.Logger) GRPCServerOption {
 	}
 }
 
-type GRPCServer struct {
+type Server struct {
 	id                string
 	address           string
 	proto             string
@@ -251,14 +259,14 @@ type GRPCServer struct {
 	pollpb.UnimplementedPollServiceServer
 }
 
-func NewGRPCServer(address string, recorder Recorder, options ...GRPCServerOption) (*GRPCServer, error) {
+func NewServer(address string, recorder Recorder, options ...ServerOption) (*Server, error) {
 	if address == "" {
 		return nil, fmt.Errorf("address cannot be empty")
 	} else if recorder == nil {
 		return nil, fmt.Errorf("recorder cannot be nil")
 	}
 
-	s := &GRPCServer{
+	s := &Server{
 		address:           address,
 		recorder:          recorder,
 		id:                littleid.New(),
@@ -275,12 +283,12 @@ func NewGRPCServer(address string, recorder Recorder, options ...GRPCServerOptio
 		}
 	}
 
-	s.log = s.log.With("name", GRPCServerName, "id", s.id, "address", s.address)
+	s.log = s.log.With("name", ServerName, "id", s.id, "address", s.address)
 
 	return s, nil
 }
 
-func (s GRPCServer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
+func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
 	now := time.Now()
 	resp := &pollpb.PollResponse{}
 	resp.SetId(s.id)
@@ -308,7 +316,7 @@ func (s GRPCServer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.
 	return resp, nil
 }
 
-func (s *GRPCServer) Run(ctx context.Context) error {
+func (s *Server) Run(ctx context.Context) error {
 	s.log.InfoContext(ctx, "starting")
 
 	s.server = grpc.NewServer(s.serverOptions...)

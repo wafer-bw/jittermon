@@ -1,4 +1,4 @@
-package traceroute
+package exectraceroute
 
 // export for testing.
 func WithTracer(tracer Tracer) Option {
