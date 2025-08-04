@@ -24,8 +24,18 @@ const (
 	GRPCClientName string = "grpc_p2platency_client"
 	GRPCServerName string = "grpc_p2platency_server"
 
-	timeoutMultiplier int           = 2
+	defaultInterval          time.Duration = 1 * time.Second
+	defaultTimeout           time.Duration = defaultInterval * time.Duration(2)
+	defaultProto             string        = "tcp"
+	defaultReflectionEnabled bool          = true
+
 	maxConnectionIdle time.Duration = 5 * time.Minute
+)
+
+var (
+	defaultLog           = slog.New(slog.DiscardHandler)
+	defaultServerOptions = []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: maxConnectionIdle})}
+	defaultDialOptions   = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 )
 
 type GRPCClientOption func(*GRPCClient) error
@@ -72,6 +82,7 @@ type GRPCClient struct {
 	id          string
 	address     string
 	interval    time.Duration
+	timeout     time.Duration
 	recorder    Recorder
 	dialOptions []grpc.DialOption
 	log         *slog.Logger
@@ -89,9 +100,10 @@ func NewGRPCClient(address string, recorder Recorder, options ...GRPCClientOptio
 		address:     address,
 		recorder:    recorder,
 		id:          littleid.New(),
-		interval:    1 * time.Second,
-		dialOptions: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
-		log:         slog.New(slog.DiscardHandler),
+		interval:    defaultInterval,
+		timeout:     defaultTimeout,
+		dialOptions: defaultDialOptions,
+		log:         defaultLog,
 	}
 
 	for _, option := range options {
@@ -112,7 +124,7 @@ func (c GRPCClient) Poll(ctx context.Context) error {
 	req := &pollpb.PollRequest{}
 	req.SetId(c.id)
 	req.SetTimestamp(timestamppb.New(start))
-	pCtx, cancel := context.WithTimeout(ctx, c.interval*time.Duration(timeoutMultiplier)) // TODO: determine what to set this to, too early and we report non-lost packets.
+	pCtx, cancel := context.WithTimeout(ctx, c.timeout) // TODO: determine what to set this to, too early and we report non-lost packets.
 	defer cancel()
 	c.recorder.Record(ctx, recorder.Sample{Time: start, Type: recorder.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
 	rsp, err := c.conn.Poll(pCtx, req)
@@ -240,11 +252,11 @@ func NewGRPCServer(address string, recorder Recorder, options ...GRPCServerOptio
 		address:           address,
 		recorder:          recorder,
 		id:                littleid.New(),
-		proto:             "tcp",
-		serverOptions:     []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: maxConnectionIdle})},
-		reflectionEnabled: true,
-		log:               slog.New(slog.DiscardHandler),
 		jitter:            &jitter.Buffer{},
+		proto:             defaultProto,
+		serverOptions:     defaultServerOptions,
+		reflectionEnabled: defaultReflectionEnabled,
+		log:               defaultLog,
 	}
 
 	for _, option := range options {

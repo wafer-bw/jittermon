@@ -16,12 +16,15 @@ import (
 )
 
 const (
-	Name         string        = "http_prometheus_server"
+	Name string = "http_prometheus_server"
+
 	namespace    string        = "jittermon"     // TODO: make configurable.
 	readTimeout  time.Duration = 1 * time.Second // TODO: make configurable.
 	writeTimeout time.Duration = 2 * time.Second // TODO: make configurable.
 	idleTimeout  time.Duration = 5 * time.Second // TODO: make configurable.
 )
+
+var defaultLog = slog.New(slog.DiscardHandler)
 
 type Option func(*Prometheus) error
 
@@ -65,7 +68,7 @@ func New(addr string, options ...Option) (*Prometheus, error) {
 	r := &Prometheus{
 		id:  littleid.New(),
 		mu:  &sync.Mutex{},
-		log: slog.New(slog.DiscardHandler),
+		log: defaultLog,
 	}
 
 	for _, option := range options {

@@ -14,11 +14,18 @@ import (
 )
 
 const (
-	UDPName         string = "udp_latency_client"
-	replyBufferSize int    = 512
+	UDPName string = "udp_latency_client"
+
+	defaultInterval time.Duration = 1 * time.Second
+	defaultTimeout  time.Duration = defaultInterval * time.Duration(2)
+
+	replyBufferSize int = 512
 )
 
-var packet = []byte{0x12, 0x34, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+var (
+	defaultLog = slog.New(slog.DiscardHandler)
+	packet     = []byte{0x12, 0x34, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+)
 
 type UDPOption func(*UDPClient) error
 
@@ -57,6 +64,7 @@ type UDPClient struct {
 	id       string
 	address  string
 	interval time.Duration
+	timeout  time.Duration
 	recorder Recorder
 	log      *slog.Logger
 	jitter   *jitter.Buffer
@@ -73,9 +81,10 @@ func NewUDP(address string, recorder Recorder, options ...UDPOption) (*UDPClient
 		address:  address,
 		recorder: recorder,
 		id:       littleid.New(),
-		interval: 1 * time.Second,
-		log:      slog.New(slog.DiscardHandler),
 		jitter:   &jitter.Buffer{},
+		interval: defaultInterval,
+		timeout:  defaultTimeout,
+		log:      defaultLog,
 	}
 
 	for _, option := range options {

@@ -14,6 +14,16 @@ import (
 
 const Name string = "exec_traceroute_client"
 
+const (
+	defaultMaxHops  int           = 24
+	defaultInterval time.Duration = 1 * time.Second
+	defaultTimeout  time.Duration = defaultInterval * time.Duration(2)
+)
+
+var (
+	defaultLog = slog.New(slog.DiscardHandler)
+)
+
 type Option func(*TraceRoute) error
 
 func WithID(id string) Option {
@@ -33,6 +43,16 @@ func WithInterval(interval time.Duration) Option {
 			return nil
 		}
 		c.interval = interval
+		return nil
+	}
+}
+
+func WithTimeout(timeout time.Duration) Option {
+	return func(c *TraceRoute) error {
+		if timeout <= 0 {
+			return nil
+		}
+		c.timeout = timeout
 		return nil
 	}
 }
@@ -59,6 +79,7 @@ type TraceRoute struct {
 	address  string
 	maxHops  int
 	interval time.Duration
+	timeout  time.Duration
 	tracer   Tracer
 	recorder Recorder
 	log      *slog.Logger
@@ -66,12 +87,13 @@ type TraceRoute struct {
 
 func NewTraceRoute(address string, recorder Recorder, options ...Option) (*TraceRoute, error) {
 	c := &TraceRoute{
-		id:       littleid.New(),
 		address:  address,
-		maxHops:  24, //nolint:mnd // all defaults controlled here.
-		interval: 1 * time.Second,
 		recorder: recorder,
-		log:      slog.New(slog.DiscardHandler),
+		id:       littleid.New(),
+		maxHops:  defaultMaxHops,
+		interval: defaultInterval,
+		timeout:  defaultTimeout,
+		log:      defaultLog,
 	}
 
 	for _, option := range options {
@@ -114,7 +136,7 @@ func (c TraceRoute) Run(ctx context.Context) error {
 	c.log.InfoContext(ctx, "starting", "interval", c.interval)
 
 	if c.tracer == nil {
-		c.tracer = &execTracer{Timeout: c.interval, MaxHops: c.maxHops}
+		c.tracer = &execTracer{Timeout: c.timeout, MaxHops: c.maxHops}
 	}
 
 	for {
