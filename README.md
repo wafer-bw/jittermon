@@ -80,6 +80,8 @@ docker compose -f demo/docker-compose-remote-p2p.yml down
 ```
 
 ## TODOs
+- cancel and remove standalone version for now, only support docker w/ grafana.
+- simplify samplers to just close on ctx end.
 - elevated packet loss sometimes causes stream specific jitter to stop being
   tracked, likely something to do with grpc connection?
 - running locally should serve webpage with simple charts
