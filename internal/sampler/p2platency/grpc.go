@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/littleid"
-	rec "github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/recorder"
 	"github.com/wafer-bw/jittermon/internal/sampler/p2platency/internal/pollpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -21,325 +20,248 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// TODO: audit naming and name values.
-// TODO: consider how to do protocol split.
-
-var _ graceful.Runner = &Peer{}
-
 const (
-	SamplerName             string        = "p2platency"
-	DefaultInterval         time.Duration = 1 * time.Second
-	DefaultProto            string        = "tcp"
-	DefaultServerReflection bool          = true
+	GRPCClientName string = "grpc_p2platency_client"
+	GRPCServerName string = "grpc_p2platency_server"
 
-	clientName        string        = "grpc_p2platency_client"
-	serverName        string        = "grpc_p2platency_server"
+	timeoutMultiplier int           = 2
 	maxConnectionIdle time.Duration = 5 * time.Minute
 )
 
-var (
-	DefaulDialOpts    []grpc.DialOption   = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	DefaultServerOpts []grpc.ServerOption = []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: maxConnectionIdle})}
-	DefaultLogger     *slog.Logger        = slog.New(slog.DiscardHandler)
-)
+type GRPCClientOption func(*GRPCClient) error
 
-type Recorder interface {
-	rec.Recorder
-}
-
-type GRPCClientPoller interface {
-	pollpb.PollServiceClient
-}
-
-type Peer struct {
-	id            string
-	sendAddresses []string
-	listenAddress string
-	interval      time.Duration
-	recorder      Recorder
-	proto         string
-	dialOptions   []grpc.DialOption
-	serverOptions []grpc.ServerOption
-	reflection    bool
-	log           *slog.Logger
-	group         graceful.Group
-	stoppedCh     chan struct{}
-	doneCh        chan struct{}
-
-	pollpb.UnimplementedPollServiceServer
-}
-
-type Option func(*Peer) error
-
-func WithID(id string) Option {
-	return func(p *Peer) error {
+func WithGRPCClientID(id string) GRPCClientOption {
+	return func(c *GRPCClient) error {
+		id = strings.TrimSpace(id)
 		if id == "" {
 			return nil
 		}
-		p.id = strings.TrimSpace(id)
+		c.id = id
 		return nil
 	}
 }
 
-func WithInterval(interval time.Duration) Option {
-	return func(p *Peer) error {
+func WithGRPCClientInterval(interval time.Duration) GRPCClientOption {
+	return func(c *GRPCClient) error {
 		if interval <= 0 {
 			return nil
 		}
-		p.interval = interval
+		c.interval = interval
 		return nil
 	}
 }
 
-func WithRecorder(recorder rec.Recorder) Option {
-	return func(p *Peer) error {
-		p.recorder = recorder
-		return nil
-	}
-}
-
-func WithLog(log *slog.Logger) Option {
-	return func(p *Peer) error {
-		p.log = log
-		return nil
-	}
-}
-
-func WithSendAddresses(addrs ...string) Option {
-	return func(p *Peer) error {
-		p.sendAddresses = addrs
-		return nil
-	}
-}
-
-func WithListenAddress(addr string) Option {
-	return func(p *Peer) error {
-		p.listenAddress = addr
-		return nil
-	}
-}
-
-func WithProto(proto string) Option {
-	return func(p *Peer) error {
-		if proto == "" {
+func WithGRPCClientLog(log *slog.Logger) GRPCClientOption {
+	return func(c *GRPCClient) error {
+		if log == nil {
 			return nil
 		}
-		p.proto = proto
+		c.log = log
 		return nil
 	}
 }
 
-func WithDialOptions(opts ...grpc.DialOption) Option {
-	return func(p *Peer) error {
-		p.dialOptions = opts
+func WithGRPCClientDialOptions(opts ...grpc.DialOption) GRPCClientOption {
+	return func(c *GRPCClient) error {
+		c.dialOptions = opts
 		return nil
 	}
 }
 
-func WithServerOptions(opts ...grpc.ServerOption) Option {
-	return func(p *Peer) error {
-		p.serverOptions = opts
-		return nil
-	}
+type GRPCClient struct {
+	id          string
+	address     string
+	interval    time.Duration
+	recorder    Recorder
+	dialOptions []grpc.DialOption
+	log         *slog.Logger
+	conn        GRPCClientPoller
 }
 
-func WithServerReflection(enabled bool) Option {
-	return func(p *Peer) error {
-		p.reflection = enabled
-		return nil
-	}
-}
-
-func NewPeer(options ...Option) (*Peer, error) {
-	p := &Peer{
-		id:            littleid.New(),
-		interval:      DefaultInterval,
-		recorder:      rec.NoOp,
-		proto:         DefaultProto,
-		serverOptions: DefaultServerOpts,
-		dialOptions:   DefaulDialOpts,
-		reflection:    DefaultServerReflection,
-		log:           DefaultLogger,
-		stoppedCh:     make(chan struct{}),
-		doneCh:        make(chan struct{}),
+func NewGRPCClient(address string, recorder Recorder, options ...GRPCClientOption) (*GRPCClient, error) {
+	if address == "" {
+		return nil, fmt.Errorf("address cannot be empty")
+	} else if recorder == nil {
+		return nil, fmt.Errorf("recorder cannot be nil")
 	}
 
-	for _, opt := range options {
-		if opt == nil {
-			continue
-		}
-		if err := opt(p); err != nil {
-			return nil, err
+	c := &GRPCClient{
+		address:     address,
+		recorder:    recorder,
+		id:          littleid.New(),
+		interval:    1 * time.Second,
+		dialOptions: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
+		log:         slog.New(slog.DiscardHandler),
+	}
+
+	for _, option := range options {
+		if err := option(c); err != nil {
+			return nil, fmt.Errorf("apply option: %w", err)
 		}
 	}
 
-	p.group = graceful.Group{}
-	for _, addr := range p.sendAddresses {
-		client := &Client{
-			ID:          p.id,
-			Address:     addr,
-			Interval:    p.interval,
-			Recorder:    p.recorder,
-			DialOptions: p.dialOptions,
-			Log:         p.log,
-			StopCh:      make(chan struct{}),
-			StoppedCh:   make(chan struct{}),
-		}
-		p.group = append(p.group, client)
-	}
+	c.log = c.log.With("name", GRPCClientName, "id", c.id, "address", c.address)
 
-	if p.listenAddress != "" {
-		server := &Server{
-			ID:                      p.id,
-			Address:                 p.listenAddress,
-			Proto:                   p.proto,
-			ServerOptions:           p.serverOptions,
-			ServerReflectionEnabled: p.reflection,
-			Recorder:                p.recorder,
-			RequestBuffers:          &jitter.Buffer{},
-			Log:                     p.log,
-			StartedCh:               make(chan struct{}),
-			StoppedCh:               make(chan struct{}),
-		}
-		p.group = append(p.group, server)
-	}
-
-	return p, nil
+	return c, nil
 }
 
-func (p *Peer) Start(ctx context.Context) error {
-	defer close(p.stoppedCh)
-	return p.group.Start(ctx)
-}
+func (c GRPCClient) Poll(ctx context.Context) error {
+	labels := recorder.Labels{{K: "src", V: c.id}, {K: "dst", V: c.address}}
 
-func (p *Peer) Stop(ctx context.Context) error {
-	select {
-	case <-p.stoppedCh:
-	case <-ctx.Done():
-	}
-
-	return p.group.Stop(ctx)
-}
-
-type Client struct {
-	ID          string
-	Address     string
-	Interval    time.Duration
-	Recorder    Recorder
-	DialOptions []grpc.DialOption
-	Log         *slog.Logger
-	StopCh      chan struct{}
-	StoppedCh   chan struct{}
-	Client      GRPCClientPoller
-}
-
-func (c Client) Poll(ctx context.Context) error {
 	start := time.Now()
-	labels := rec.Labels{{K: "src", V: c.ID}, {K: "dst", V: c.Address}}
-
 	req := &pollpb.PollRequest{}
-	req.SetId(c.ID)
+	req.SetId(c.id)
 	req.SetTimestamp(timestamppb.New(start))
-
-	pCtx, cancel := context.WithTimeout(ctx, c.Interval*2)
+	pCtx, cancel := context.WithTimeout(ctx, c.interval*time.Duration(timeoutMultiplier)) // TODO: determine what to set this to, too early and we report non-lost packets.
 	defer cancel()
-
-	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
-	rsp, err := c.Client.Poll(pCtx, req)
+	c.recorder.Record(ctx, recorder.Sample{Time: start, Type: recorder.SampleTypeSentPackets, Val: struct{}{}, Labels: labels})
+	rsp, err := c.conn.Poll(pCtx, req)
 	if err != nil {
-		c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeLostPackets, Val: struct{}{}, Labels: labels})
-		c.Log.Error("poll failed", "err", err)
+		c.recorder.Record(ctx, recorder.Sample{Time: start, Type: recorder.SampleTypeLostPackets, Val: struct{}{}, Labels: labels})
 		return err
 	}
+	end := time.Now()
 
-	rtt := time.Since(start)
+	rtt := end.Sub(start)
+	c.recorder.Record(ctx, recorder.Sample{Time: start, Type: recorder.SampleTypeRTT, Val: rtt, Labels: labels})
 
 	dstID := rsp.GetId()
 	if dstID == "" {
-		c.Log.Error("no id in response")
 		return fmt.Errorf("no id in response")
 	}
-
 	jitterPb := rsp.GetJitter()
 	if jitterPb == nil {
-		c.Log.Warn("no jitter in response")
 		return fmt.Errorf("no jitter in response")
 	}
 	jit := jitterPb.AsDuration()
-
-	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeUpstreamJitter, Val: jit, Labels: labels})
-	c.Recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeRTT, Val: rtt, Labels: labels})
+	c.recorder.Record(ctx, recorder.Sample{Time: start, Type: recorder.SampleTypeUpstreamJitter, Val: jit, Labels: labels})
 
 	return nil
 }
 
-func (c *Client) Start(ctx context.Context) error {
-	c.Log = c.Log.With("id", c.ID, "name", clientName, "addr", c.Address)
-	c.Log.Info("starting")
+func (c *GRPCClient) Run(ctx context.Context) error {
+	ticker := time.NewTicker(c.interval)
+	defer ticker.Stop()
 
-	defer close(c.StoppedCh)
+	c.log.InfoContext(ctx, "starting", "interval", c.interval)
 
-	if c.Client == nil {
-		conn, err := grpc.NewClient(c.Address, c.DialOptions...)
+	if c.conn == nil { // can exist already in tests.
+		conn, err := grpc.NewClient(c.address, c.dialOptions...)
 		if err != nil {
 			return err
 		}
 		defer conn.Close()
-		c.Client = pollpb.NewPollServiceClient(conn)
+		c.conn = pollpb.NewPollServiceClient(conn)
 	}
-
-	ticker := time.NewTicker(c.Interval)
-	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
 			if err := c.Poll(ctx); err != nil {
-				c.Log.Warn("do poll failed", "err", err)
+				c.log.WarnContext(ctx, "poll failed", "err", err)
 				continue
 			}
 		case <-ctx.Done():
+			c.log.WarnContext(ctx, "context done, stopping", "err", ctx.Err())
 			return ctx.Err()
-		case <-c.StopCh:
-			return nil
 		}
 	}
 }
 
-func (c *Client) Stop(ctx context.Context) error {
-	c.Log.Debug("stopping")
+type GRPCServerOption func(*GRPCServer) error
 
-	close(c.StopCh)
-
-	select {
-	case <-c.StoppedCh:
+func WithGRPCServerID(id string) GRPCServerOption {
+	return func(s *GRPCServer) error {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return nil
+		}
+		s.id = id
 		return nil
-	case <-ctx.Done():
-		return fmt.Errorf("graceful stop of %s[%s] failed: %w", clientName, c.ID, ctx.Err())
 	}
 }
 
-type Server struct {
-	ID                      string
-	Address                 string
-	Proto                   string
-	ServerOptions           []grpc.ServerOption
-	ServerReflectionEnabled bool
-	Recorder                Recorder
-	RequestBuffers          *jitter.Buffer
-	Log                     *slog.Logger
-	StartedCh               chan struct{}
-	StoppedCh               chan struct{}
+func WithGRPCServerProto(proto string) GRPCServerOption {
+	return func(s *GRPCServer) error {
+		if proto == "" {
+			return nil
+		}
+		s.proto = proto
+		return nil
+	}
+}
 
-	Server *grpc.Server
+func WithGRPCServerOptions(opts ...grpc.ServerOption) GRPCServerOption {
+	return func(s *GRPCServer) error {
+		s.serverOptions = opts
+		return nil
+	}
+}
+
+func WithGRPCServerReflection(enabled bool) GRPCServerOption {
+	return func(s *GRPCServer) error {
+		s.reflectionEnabled = enabled
+		return nil
+	}
+}
+
+func WithGRPCServerLog(log *slog.Logger) GRPCServerOption {
+	return func(s *GRPCServer) error {
+		if log == nil {
+			return nil
+		}
+		s.log = log
+		return nil
+	}
+}
+
+type GRPCServer struct {
+	id                string
+	address           string
+	proto             string
+	serverOptions     []grpc.ServerOption
+	reflectionEnabled bool
+	recorder          Recorder
+	jitter            *jitter.Buffer
+	log               *slog.Logger
+	server            *grpc.Server
 
 	pollpb.UnimplementedPollServiceServer
 }
 
-func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
+func NewGRPCServer(address string, recorder Recorder, options ...GRPCServerOption) (*GRPCServer, error) {
+	if address == "" {
+		return nil, fmt.Errorf("address cannot be empty")
+	} else if recorder == nil {
+		return nil, fmt.Errorf("recorder cannot be nil")
+	}
+
+	s := &GRPCServer{
+		address:           address,
+		recorder:          recorder,
+		id:                littleid.New(),
+		proto:             "tcp",
+		serverOptions:     []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: maxConnectionIdle})},
+		reflectionEnabled: true,
+		log:               slog.New(slog.DiscardHandler),
+		jitter:            &jitter.Buffer{},
+	}
+
+	for _, option := range options {
+		if err := option(s); err != nil {
+			return nil, fmt.Errorf("apply option: %w", err)
+		}
+	}
+
+	s.log = s.log.With("name", GRPCServerName, "id", s.id, "address", s.address)
+
+	return s, nil
+}
+
+func (s GRPCServer) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
 	now := time.Now()
 	resp := &pollpb.PollResponse{}
-	resp.SetId(s.ID)
+	resp.SetId(s.id)
 
 	srcID := req.GetId()
 	if srcID == "" {
@@ -352,32 +274,29 @@ func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.Poll
 	}
 	sentAt := sentAtPb.AsTime()
 
-	jitter, ok := s.RequestBuffers.Interarrival(srcID, sentAt, now)
+	jitter, ok := s.jitter.Interarrival(srcID, sentAt, now)
 	if !ok {
 		return resp, nil
 	}
 	resp.SetJitter(durationpb.New(jitter))
 
-	labels := rec.Labels{{K: "src", V: srcID}, {K: "dst", V: s.ID}}
-	s.Recorder.Record(ctx, rec.Sample{Time: now, Type: rec.SampleTypeDownstreamJitter, Val: jitter, Labels: labels})
+	labels := recorder.Labels{{K: "src", V: srcID}, {K: "dst", V: s.id}}
+	s.recorder.Record(ctx, recorder.Sample{Time: now, Type: recorder.SampleTypeDownstreamJitter, Val: jitter, Labels: labels})
 
 	return resp, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	s.Log = s.Log.With("id", s.ID, "name", serverName, "addr", s.Address)
-	s.Log.Info("starting")
+func (s *GRPCServer) Run(ctx context.Context) error {
+	s.log.InfoContext(ctx, "starting")
 
-	defer close(s.StoppedCh)
-
-	s.Server = grpc.NewServer(s.ServerOptions...)
-	pollpb.RegisterPollServiceServer(s.Server, s)
-	if s.ServerReflectionEnabled {
-		reflection.Register(s.Server)
+	s.server = grpc.NewServer(s.serverOptions...)
+	pollpb.RegisterPollServiceServer(s.server, s)
+	if s.reflectionEnabled {
+		reflection.Register(s.server)
 	}
+	defer s.server.Stop()
 
-	var err error
-	listener, err := net.Listen(s.Proto, s.Address)
+	listener, err := net.Listen(s.proto, s.address)
 	if err != nil {
 		return err
 	}
@@ -385,43 +304,18 @@ func (s *Server) Start(ctx context.Context) error {
 
 	errCh := make(chan error)
 	go func() {
-		if err := s.Server.Serve(listener); err != nil {
-			errCh <- fmt.Errorf("failed to serve %s[%s]: %w", serverName, s.ID, err)
+		if err := s.server.Serve(listener); err != nil {
+			errCh <- err
 		}
 		close(errCh)
 	}()
 
-	close(s.StartedCh)
-
 	select {
 	case <-ctx.Done():
+		s.log.WarnContext(ctx, "context done, stopping", "err", ctx.Err())
 		return ctx.Err()
 	case err := <-errCh:
+		s.log.ErrorContext(ctx, "server failed", "err", err)
 		return err
-	}
-}
-
-func (s *Server) Stop(ctx context.Context) error {
-	s.Log.Debug("stopping")
-
-	gracefullyStoppedCh := make(chan struct{})
-	go func() {
-		select {
-		case <-s.StartedCh:
-		case <-s.StoppedCh:
-		case <-ctx.Done():
-			return
-		}
-
-		s.Server.GracefulStop()
-		close(gracefullyStoppedCh)
-	}()
-
-	select {
-	case <-gracefullyStoppedCh:
-		return nil
-	case <-ctx.Done():
-		s.Server.Stop()
-		return fmt.Errorf("graceful stop of %s[%s] failed: %w", serverName, s.ID, ctx.Err())
 	}
 }

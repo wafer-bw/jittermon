@@ -2,28 +2,9 @@
 [![codecov](https://codecov.io/gh/wafer-bw/jittermon/graph/badge.svg?token=EZfdMqKD7p)](https://codecov.io/gh/wafer-bw/jittermon)
 [![checks](https://github.com/wafer-bw/jittermon/actions/workflows/checks.yml/badge.svg)](https://github.com/wafer-bw/jittermon/actions/workflows/checks.yml)
 
-```sh
-go run github.com/wafer-bw/jittermon@latest
-```
-
 ## Demos
 Preconfigured demos using Docker, Grafana, Prometheus, & Loki
-
 ![Example Screenshot](./.media/examplescreen.png)
-
-### Standalone
-Measures traffic to a remote IP.
-```sh
-# build docker image
-docker build -t jittermon .
-# start the demo
-docker compose -f demo/docker-compose-standalone.yml up -d
-# observe metrics at http://localhost:3000/d/aec2tnhcwbuo0b
-```
-```sh
-# stop
-docker compose -f demo/docker-compose-standalone.yml down
-```
 
 ### Local P2P
 Measures traffic between local peers on the same network.
@@ -80,35 +61,24 @@ docker compose -f demo/docker-compose-remote-p2p.yml down
 ```
 
 ## TODOs
-- cancel and remove standalone version for now, only support docker w/ grafana.
-- simplify samplers to just close on ctx end.
-- elevated packet loss sometimes causes stream specific jitter to stop being
-  tracked, likely something to do with grpc connection?
-- running locally should serve webpage with simple charts
-  - https://developers.google.com/chart/interactive/docs/gallery/linechart
-  - use htmx for frontend
-  - use duckdb to store data fallback to memory
-- decide how to split samplers
-  - one package of base types? in main tie it all together with config?
-  - split package per type?
-  - sub group dichotomy?
-- simplify recorder interface by using interface assertion to
-  - determine sample type
-  - determine labels
-  - determine timestamp
+- rename Poll to Sample. on samplers.
+- split samplers into package per type.
+- cleanup package names then cleanup type names.
+- simplify recorder interface by using interface assertion to:
+  - determine sample type.
+  - determine labels.
+  - determine timestamp.
   - no longer need `Sample` or `SampleType`
-- identify samplers more consistently
-- move logger into context
-  - add contextual log handler for common attributes
-- add a way to request samplers by name
-- handle src/dst id/address confusion
-- back off send rate when failing
-- route tracing
-  - hop filtering in grafana
-  - more useful visualizations
-- promote required packages out of internal
-- at least one alternative to fly.io for demo
-- Look into establishing streaming connections for p2p to avoid TCP overhead?
-- Cobra CLI for main.go execution
-- Simple TUI visualization for CLI use?
-- Local server visualizing recorded data so it can be run without prom?
+- log recorder.
+- add a way to request samplers by name and/or redefine config as more
+  structured.
+- update readme with better getting started guide.
+- handle src/dst id/address confusion.
+- back off send rate when failing.
+- handle timeouts that take longer than interval to avoid misreporting packet
+  loss.
+- route tracing.
+  - hop filtering in grafana.
+  - more useful visualizations.
+- promote required packages out of internal.
+- at least one alternative to fly.io for demo.

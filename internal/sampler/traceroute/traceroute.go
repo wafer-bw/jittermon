@@ -8,176 +8,125 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wafer-bw/go-toolbox/graceful"
 	"github.com/wafer-bw/jittermon/internal/littleid"
-	rec "github.com/wafer-bw/jittermon/internal/recorder"
+	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
-var _ graceful.Runner = (*TraceRoute)(nil)
-
-const (
-	SamplerName     string        = "traceroute"
-	DefaultInterval time.Duration = 1 * time.Second
-	DefaultAddress  string        = "8.8.8.8"
-	DefaultMaxHops  int           = 24
-)
-
-type Tracer interface {
-	Trace(ctx context.Context, dst string) (Hops, error)
-}
-
-type Recorder interface {
-	rec.Recorder
-}
-
-type TraceRoute struct {
-	id        string
-	address   string
-	maxHops   int
-	interval  time.Duration
-	tracer    Tracer
-	recorder  Recorder
-	log       *slog.Logger
-	stoppedCh chan struct{}
-	stopCh    chan struct{}
-}
+const Name string = "exec_traceroute_client"
 
 type Option func(*TraceRoute) error
 
 func WithID(id string) Option {
-	return func(tr *TraceRoute) error {
+	return func(c *TraceRoute) error {
+		id = strings.TrimSpace(id)
 		if id == "" {
 			return nil
 		}
-		tr.id = strings.TrimSpace(id)
-		return nil
-	}
-}
-
-func WithAddress(address string) Option {
-	return func(tr *TraceRoute) error {
-		if address == "" {
-			return nil
-		}
-		tr.address = address
+		c.id = id
 		return nil
 	}
 }
 
 func WithInterval(interval time.Duration) Option {
-	return func(tr *TraceRoute) error {
+	return func(c *TraceRoute) error {
 		if interval <= 0 {
 			return nil
 		}
-		tr.interval = interval
+		c.interval = interval
 		return nil
 	}
 }
 
 func WithMaxHops(maxHops int) Option {
-	return func(tr *TraceRoute) error {
+	return func(c *TraceRoute) error {
 		if maxHops <= 0 {
 			return nil
 		}
-		tr.maxHops = maxHops
-		return nil
-	}
-}
-
-func WithRecorder(recorder rec.Recorder) Option {
-	return func(tr *TraceRoute) error {
-		tr.recorder = recorder
+		c.maxHops = maxHops
 		return nil
 	}
 }
 
 func WithLog(log *slog.Logger) Option {
-	return func(tr *TraceRoute) error {
-		tr.log = log
+	return func(c *TraceRoute) error {
+		c.log = log
 		return nil
 	}
 }
 
-func NewTraceRoute(options ...Option) (*TraceRoute, error) {
-	tr := &TraceRoute{
-		id:        littleid.New(),
-		address:   DefaultAddress,
-		maxHops:   DefaultMaxHops,
-		interval:  DefaultInterval,
-		recorder:  rec.NoOp,
-		log:       slog.New(slog.DiscardHandler),
-		stoppedCh: make(chan struct{}),
-		stopCh:    make(chan struct{}),
-	}
-
-	for _, opt := range options {
-		if opt == nil {
-			continue
-		}
-		if err := opt(tr); err != nil {
-			return nil, err
-		}
-	}
-
-	tr.tracer = &execTracer{Timeout: tr.interval, MaxHops: tr.maxHops}
-
-	return tr, nil
+type TraceRoute struct {
+	id       string
+	address  string
+	maxHops  int
+	interval time.Duration
+	tracer   Tracer
+	recorder Recorder
+	log      *slog.Logger
 }
 
-func (tr TraceRoute) Start(ctx context.Context) error {
-	tr.log = tr.log.With("id", tr.id, "name", SamplerName, "addr", tr.address)
-	tr.log.Info("starting")
+func NewTraceRoute(address string, recorder Recorder, options ...Option) (*TraceRoute, error) {
+	c := &TraceRoute{
+		id:       littleid.New(),
+		address:  address,
+		maxHops:  24, //nolint:mnd // all defaults controlled here.
+		interval: 1 * time.Second,
+		recorder: recorder,
+		log:      slog.New(slog.DiscardHandler),
+	}
 
-	defer close(tr.stoppedCh)
-
-	ticker := time.NewTicker(tr.interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			if err := tr.Trace(ctx); err != nil {
-				return err
-			}
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-tr.stopCh:
-			return nil
+	for _, option := range options {
+		if err := option(c); err != nil {
+			return nil, fmt.Errorf("apply option: %w", err)
 		}
 	}
+
+	c.log = c.log.With("name", Name, "id", c.id, "address", c.address)
+
+	return c, nil
 }
 
-func (tr TraceRoute) Stop(ctx context.Context) error {
-	tr.log.Debug("stopping")
-
-	close(tr.stopCh)
-
-	select {
-	case <-tr.stoppedCh:
-		return nil
-	case <-ctx.Done():
-		return fmt.Errorf("graceful stop of %s[%s] failed: %w", SamplerName, tr.id, ctx.Err())
-	}
-}
-
-func (tr TraceRoute) Trace(ctx context.Context) error {
+func (c TraceRoute) Poll(ctx context.Context) error {
 	start := time.Now()
 
-	hops, err := tr.tracer.Trace(ctx, tr.address)
+	hops, err := c.tracer.Trace(ctx, c.address)
 	if err != nil {
 		return err
 	}
 
 	for _, hop := range hops {
-		labels := rec.Labels{
-			{K: "src", V: tr.id},
-			{K: "dst", V: tr.address},
+		labels := recorder.Labels{
+			{K: "src", V: c.id},
+			{K: "dst", V: c.address},
 			{K: "hop", V: strconv.Itoa(hop.Hop)},
 			{K: "addr", V: hop.Addr},
 			{K: "hostname", V: hop.Name},
 		}
-		tr.recorder.Record(ctx, rec.Sample{Time: start, Type: rec.SampleTypeHopRTT, Val: hop.RTT, Labels: labels})
+		c.recorder.Record(ctx, recorder.Sample{Time: start, Type: recorder.SampleTypeHopRTT, Val: hop.RTT, Labels: labels})
 	}
 
 	return nil
+}
+
+func (c TraceRoute) Run(ctx context.Context) error {
+	ticker := time.NewTicker(c.interval)
+	defer ticker.Stop()
+
+	c.log.InfoContext(ctx, "starting", "interval", c.interval)
+
+	if c.tracer == nil {
+		c.tracer = &execTracer{Timeout: c.interval, MaxHops: c.maxHops}
+	}
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := c.Poll(ctx); err != nil {
+				c.log.WarnContext(ctx, "poll failed", "err", err)
+				return err
+			}
+		case <-ctx.Done():
+			c.log.WarnContext(ctx, "context done, stopping", "err", ctx.Err())
+			return ctx.Err()
+		}
+	}
 }
