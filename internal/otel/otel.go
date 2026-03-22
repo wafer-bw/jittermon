@@ -91,7 +91,7 @@ func init() {
 		metric.WithUnit("s"),
 	)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create upstream jitter gauge: %v", err))
+		panic(fmt.Sprintf("failed to create upstream jitter histogram: %v", err))
 	}
 
 	DownstreamJitterHistogram, err = meter.Float64Histogram(
@@ -100,7 +100,7 @@ func init() {
 		metric.WithUnit("s"),
 	)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create downstream jitter gauge: %v", err))
+		panic(fmt.Sprintf("failed to create downstream jitter histogram: %v", err))
 	}
 }
 

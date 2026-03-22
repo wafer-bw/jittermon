@@ -26,12 +26,12 @@ fly ips allocate-v4
 # set remote send address
 # make sure to replace YOURIP with the ipv4 address of your local machine
 # make sure to configure port forwarding on your local network
-fly secrets set JITTERMON_JITTER_SEND_ADDRS=YOURIP:8081
+fly secrets set JITTERMON_PTP_SEND_ADDRS=YOURIP:8081
 ```
 ```sh
 # create & update .env file with appropriate address
 # make sure to replace FLYADDRESS with the ipv4 you allocated above
-echo JITTERMON_JITTER_SEND_ADDRS=FLYADDRESS:8080 > .env
+echo JITTERMON_PTP_SEND_ADDRS=FLYADDRESS:8080 > .env
 # build docker image
 docker build -t jittermon .
 # start jittermon locally

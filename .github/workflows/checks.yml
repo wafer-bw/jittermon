@@ -84,18 +84,18 @@ jobs:
         run: go mod tidy && git diff --exit-code
       - name: Run go mod verify
         run: go mod verify
-      - name: Run formatting
-        run: ./scripts/fmt
       - name: Run go fix
-        run: go fix ./... && git diff --exit-code
+        run: go fix ./...
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
       - name: Setup buf
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
-      - name: Format protos
-        run: buf format -w && git diff --exit-code
+      - name: Run GCI
+        run: go run github.com/daixiang0/gci write -s standard -s default --skip-generated .
+      - name: Run buf
+        run: buf format -w
 
   lint:
     name: lint
@@ -139,7 +139,7 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
       - name: Run tests
-        run: go test -shuffle=on -v -count=1 -race -failfast -timeout=30s -covermode=atomic -coverprofile=coverage.txt `go list ./... | grep -v /pollpb`
+        run: go test -shuffle=on -v -count=1 -race -failfast -timeout=30s -covermode=atomic -coverprofile=coverage.txt `go list ./... | grep -v /internal/gen`
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:

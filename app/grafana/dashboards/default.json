@@ -301,7 +301,7 @@
           "useBackend": false
         }
       ],
-      "title": "Remote gRPC Peer",
+      "title": "Connection Details",
       "type": "timeseries"
     },
     {
@@ -540,5 +540,5 @@
   "timezone": "browser",
   "title": "jittermon",
   "uid": "aec2tnhcwbuo0b",
-  "version": 6
+  "version": 1
 }

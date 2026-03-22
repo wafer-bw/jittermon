@@ -2,7 +2,7 @@
 FROM golang:1.26.1 AS builder
 WORKDIR /jittermon
 COPY . .
-RUN go get -v ./... \
+RUN go mod download \
     && CGO_ENABLED=0 go build -ldflags="-w -s -extldflags '-static'" -a -o /go/bin/main .
 
 # build image
