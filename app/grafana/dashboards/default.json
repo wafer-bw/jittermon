@@ -458,7 +458,7 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "count_over_time(\n  {compose_project=\"jittermon\",compose_service=\"jittermon\"}[$__auto]\n  | label_format level=detected_level\n)",
+          "expr": "count_over_time(\n  {compose_project=\"jittermon\",compose_service=\"jittermon\"}[$__auto]\n  != \"level=DEBUG\"\n  | label_format level=detected_level\n)",
           "legendFormat": "{{level}}",
           "queryType": "range",
           "refId": "A"
@@ -503,7 +503,7 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "{compose_project=\"jittermon\",compose_service=\"jittermon\"}\n| logfmt --keep-empty\n| label_format level=detected_level",
+          "expr": "{compose_project=\"jittermon\",compose_service=\"jittermon\"}\n!= \"level=DEBUG\"\n| logfmt --keep-empty\n| label_format level=detected_level",
           "maxLines": 30,
           "queryType": "range",
           "refId": "A"
@@ -540,5 +540,5 @@
   "timezone": "browser",
   "title": "jittermon",
   "uid": "aec2tnhcwbuo0b",
-  "version": 5
+  "version": 6
 }
