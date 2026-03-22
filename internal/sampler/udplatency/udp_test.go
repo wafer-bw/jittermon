@@ -26,7 +26,7 @@ func TestClient_Poll(t *testing.T) {
 		port, err := freeport.GetFreePort()
 		require.NoError(t, err)
 		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
-		client, err := udplatency.New(addr, mockRecorder)
+		client, err := udplatency.New("id", addr, mockRecorder)
 		require.NoError(t, err)
 
 		readyCh := make(chan struct{})
@@ -96,7 +96,7 @@ func TestClient_Poll(t *testing.T) {
 		port, err := freeport.GetFreePort()
 		require.NoError(t, err)
 		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
-		client, err := udplatency.New(addr, mockRecorder)
+		client, err := udplatency.New("id", addr, mockRecorder)
 		require.NoError(t, err)
 
 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, sample recorder.Sample) {

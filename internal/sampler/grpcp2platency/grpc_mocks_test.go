@@ -13,8 +13,8 @@ import (
 	context "context"
 	reflect "reflect"
 
+	pollpb "github.com/wafer-bw/jittermon/internal/gen/go/poll/v1"
 	recorder "github.com/wafer-bw/jittermon/internal/recorder"
-	pollpb "github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency/internal/pollpb"
 	gomock "go.uber.org/mock/gomock"
 	grpc "google.golang.org/grpc"
 )

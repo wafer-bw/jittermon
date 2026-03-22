@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	pollpb "github.com/wafer-bw/jittermon/internal/gen/go/poll/v1"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 	"github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency"
-	"github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency/internal/pollpb"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"

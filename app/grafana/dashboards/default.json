@@ -162,7 +162,7 @@
               },
               {
                 "id": "custom.fillOpacity",
-                "value": 40
+                "value": 50
               },
               {
                 "id": "custom.drawStyle",
@@ -218,7 +218,7 @@
         ]
       },
       "gridPos": {
-        "h": 13,
+        "h": 18,
         "w": 24,
         "x": 0,
         "y": 0
@@ -321,109 +321,6 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": true,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "points",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "stepBefore",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 1,
-            "pointSize": 4,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 2,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 13
-      },
-      "id": 4,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "sortBy": "Name",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "hideZeros": true,
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "editorMode": "code",
-          "expr": "sum(rate(jittermon_hop_rtt_duration_seconds_sum{job=\"jittermon\"}[$__rate_interval])) by (hop, addr, hostname) / sum(rate(jittermon_hop_rtt_duration_seconds_count{job=\"jittermon\"}[$__rate_interval])) by (hop, addr, hostname) > 0",
-          "format": "time_series",
-          "legendFormat": "{{hop}} ({{hostname}})",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Traceroute",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
         "type": "loki",
         "uid": "P8E80F9AEF21F6940"
       },
@@ -441,8 +338,8 @@
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
+            "fillOpacity": 100,
+            "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
@@ -450,13 +347,16 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "auto",
-            "spanNulls": false,
+            "showPoints": "always",
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -543,23 +443,25 @@
         ]
       },
       "gridPos": {
-        "h": 7,
+        "h": 12,
         "w": 6,
         "x": 0,
-        "y": 23
+        "y": 18
       },
       "id": 3,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
-          "hideZeros": false,
+          "hideZeros": true,
           "mode": "single",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.6.0",
@@ -571,7 +473,7 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "count_over_time(\n  {compose_project=\"demo\", compose_service=\"jittermon\", container=\"/demo-jittermon-1\", service_name=\"/demo-jittermon-1\"}[$__auto]\n  | label_format level=detected_level\n)",
+          "expr": "count_over_time(\n  {compose_project=\"jittermon\",compose_service=\"jittermon\"}[$__auto]\n  | label_format level=detected_level\n)",
           "legendFormat": "{{level}}",
           "queryType": "range",
           "refId": "A"
@@ -590,10 +492,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 12,
         "w": 18,
         "x": 6,
-        "y": 23
+        "y": 18
       },
       "id": 2,
       "options": {
@@ -616,7 +518,8 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "{compose_project=\"demo\", compose_service=\"jittermon\", container=\"/demo-jittermon-1\", service_name=\"/demo-jittermon-1\"}\n| logfmt --keep-empty\n| label_format level=detected_level",
+          "expr": "{compose_project=\"jittermon\",compose_service=\"jittermon\"}\n| logfmt --keep-empty\n| label_format level=detected_level",
+          "maxLines": 30,
           "queryType": "range",
           "refId": "A"
         }
@@ -652,5 +555,5 @@
   "timezone": "browser",
   "title": "jittermon demo",
   "uid": "aec2tnhcwbuo0b",
-  "version": 3
+  "version": 4
 }

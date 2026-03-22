@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
+	pollpb "github.com/wafer-bw/jittermon/internal/gen/go/poll/v1"
 	"github.com/wafer-bw/jittermon/internal/jitter"
 	"github.com/wafer-bw/jittermon/internal/littleid"
 	"github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency/internal/pollpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"

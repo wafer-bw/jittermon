@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/wafer-bw/jittermon/internal/jitter"
-	"github.com/wafer-bw/jittermon/internal/littleid"
 	"github.com/wafer-bw/jittermon/internal/recorder"
 )
 
@@ -18,12 +16,10 @@ type Recorder interface {
 }
 
 const (
-	Name string = "udp_latency_client"
-
+	name            string        = "ping_client"
 	defaultInterval time.Duration = 1 * time.Second
 	defaultTimeout  time.Duration = defaultInterval * time.Duration(2)
-
-	replyBufferSize int = 512
+	replyBufferSize int           = 512
 )
 
 var (
@@ -32,17 +28,6 @@ var (
 )
 
 type Option func(*Client) error
-
-func WithID(id string) Option {
-	return func(c *Client) error {
-		id = strings.TrimSpace(id)
-		if id == "" {
-			return nil
-		}
-		c.id = id
-		return nil
-	}
-}
 
 func WithInterval(interval time.Duration) Option {
 	return func(c *Client) error {
@@ -84,17 +69,19 @@ type Client struct {
 	jitter   *jitter.Buffer
 }
 
-func New(address string, recorder Recorder, options ...Option) (*Client, error) {
-	if address == "" {
+func New(id string, address string, recorder Recorder, options ...Option) (*Client, error) {
+	if id == "" {
+		return nil, fmt.Errorf("id cannot be empty")
+	} else if address == "" {
 		return nil, fmt.Errorf("address cannot be empty")
 	} else if recorder == nil {
 		return nil, fmt.Errorf("recorder cannot be nil")
 	}
 
 	c := &Client{
+		id:       id,
 		address:  address,
 		recorder: recorder,
-		id:       littleid.New(),
 		jitter:   &jitter.Buffer{},
 		interval: defaultInterval,
 		timeout:  defaultTimeout,
@@ -107,7 +94,7 @@ func New(address string, recorder Recorder, options ...Option) (*Client, error) 
 		}
 	}
 
-	c.log = c.log.With("name", Name, "id", c.id, "address", c.address)
+	c.log = c.log.With("name", name, "id", c.id, "address", c.address)
 
 	return c, nil
 }

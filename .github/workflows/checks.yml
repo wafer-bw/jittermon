@@ -29,37 +29,39 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     strategy:
-      matrix:
-        go: [stable]
       fail-fast: true
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
-          check-latest: true
+          go-version-file: 'go.mod'
+          cache: true
 
   build:
     name: build
     runs-on: ubuntu-latest
     timeout-minutes: 3
     strategy:
-      matrix:
-        go: [stable]
       fail-fast: true
     needs: setup
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
-          check-latest: true
+          go-version-file: 'go.mod'
+          cache: true
       - name: Run go generate
         run: go generate ./... && git diff --exit-code
+      - name: Setup buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - name: Generate proto stubs
+        run: buf generate
       - name: Run go build
         run: go build -o /dev/null ./...
 
@@ -68,64 +70,74 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     strategy:
-      matrix:
-        go: [stable]
       fail-fast: true
     needs: setup
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
-          check-latest: true
+          go-version-file: 'go.mod'
+          cache: true
       - name: Run go mod tidy
         run: go mod tidy && git diff --exit-code
       - name: Run go mod verify
         run: go mod verify
       - name: Run formatting
         run: ./scripts/fmt
+      - name: Run go fix
+        run: go fix ./... && git diff --exit-code
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - name: Setup buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - name: Format protos
+        run: buf format -w && git diff --exit-code
 
   lint:
     name: lint
     runs-on: ubuntu-latest
     timeout-minutes: 4
     strategy:
-      matrix:
-        go: [stable]
       fail-fast: true
     needs: setup
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
-          check-latest: true
+          go-version-file: 'go.mod'
+          cache: true
       - name: Run linting
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - name: Run proto linting
+        run: buf lint
 
   test:
     name: test
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
-      matrix:
-        go: [stable]
       fail-fast: true
     needs: setup
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
-          check-latest: true
+          go-version-file: 'go.mod'
+          cache: true
       - name: Run tests
         run: go test -shuffle=on -v -count=1 -race -failfast -timeout=30s -covermode=atomic -coverprofile=coverage.txt `go list ./... | grep -v /pollpb`
       - name: Upload coverage reports to Codecov
@@ -139,17 +151,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     strategy:
-      matrix:
-        go: [stable]
       fail-fast: true
     needs: setup
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
-          check-latest: true
+          go-version-file: 'go.mod'
+          cache: true
       - name: Run benchmarks
-        run: go test -run=- -benchmem -bench . github.com/wafer-bw/jittermon/...
+        run: go test -v -shuffle=on -run=- -bench=. -benchtime=1x -timeout=1m ./...

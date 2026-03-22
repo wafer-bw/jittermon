@@ -1,0 +1,10 @@
+edition = "2023";
+
+package poll.v1;
+
+import "poll/v1/poll_request.proto";
+import "poll/v1/poll_response.proto";
+
+service PollService {
+  rpc Poll(PollRequest) returns (PollResponse) {}
+}

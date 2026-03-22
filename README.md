@@ -8,8 +8,6 @@ First, review [fly.toml](./fly.toml), you may want to update
 `primary_region = 'yyz'` to your own [region](https://fly.io/docs/reference/regions).
 
 ```sh
-# build docker image
-docker build -t jittermon .
 # deploy to fly...
 #   when executing the above follow these choices for the prompts:
 #   ? Would you like to copy its configuration to the new app?
@@ -25,17 +23,24 @@ fly launch
 fly scale count 1
 # allocate a dedicated ipv4 address
 fly ips allocate-v4
+# set remote send address
+# make sure to replace YOURIP with the ipv4 address of your local machine
+# make sure to configure port forwarding on your local network
+fly secrets set JITTERMON_JITTER_SEND_ADDRS=YOURIP:8081
+```
+```sh
 # create & update .env file with appropriate address
 # make sure to replace FLYADDRESS with the ipv4 you allocated above
-echo JITTERMON_P2P_LATENCY_SEND_ADDRS=FLYADDRESS:PORT > .env
-echo JITTERMON_TRACE_SEND_ADDRS=FLYADDRESS:PORT >> .env
+echo JITTERMON_JITTER_SEND_ADDRS=FLYADDRESS:8080 > .env
+# build docker image
+docker build -t jittermon .
 # start jittermon locally
-docker compose -f app/docker-compose.yml up -d
+docker compose -f docker-compose.yml up -d
 # observe metrics at http://localhost:3000/d/aec2tnhcwbuo0b
 ```
 ```sh
 # stop
-docker compose -f app/docker-compose.yml down
+docker compose -f docker-compose.yml down
 ```
 
 ## TODOs
