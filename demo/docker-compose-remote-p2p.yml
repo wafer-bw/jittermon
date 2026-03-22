@@ -2,6 +2,7 @@ services:
 
   jittermon:
     image: jittermon:latest
+    restart: always
     networks:
       - jittermon-network
     ports:
@@ -22,6 +23,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v3.3.0
+    restart: always
     networks:
       - jittermon-network
     ports:
@@ -33,6 +35,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.6.0
+    restart: always
     networks:
       - jittermon-network
     ports:
@@ -47,6 +50,7 @@ services:
 
   loki:
     image: grafana/loki:3.4.1
+    restart: always
     networks:
       - jittermon-network
     ports:
@@ -57,9 +61,10 @@ services:
       - ./loki:/etc/loki
 
   promtail:
+    image: grafana/promtail:3.4.1
+    restart: always
     depends_on:
       - loki
-    image: grafana/promtail:3.4.1
     networks:
       - jittermon-network
     volumes:
