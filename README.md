@@ -44,7 +44,6 @@ docker compose down
 ```
 
 ## TODOs
-- update readme with better getting started guide.
 - handle src/dst id/address confusion.
 - back off send rate when failing.
 - handle timeouts that take longer than interval to avoid misreporting packet
