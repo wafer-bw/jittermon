@@ -61,24 +61,18 @@ docker compose -f demo/docker-compose-remote-p2p.yml down
 ```
 
 ## TODOs
-- simplify recorder interface by using interface assertion to:
-  - determine sample type.
-  - determine labels.
-  - determine timestamp.
-  - no longer need `Sample` or `SampleType`
-- consider organizing samplers into subdirectories for simpler names.
-- non-exec traceroute.
-- icmp latency.
-- log recorder.
-- add a way to request samplers by name and/or redefine config as more
-  structured.
+- drastically simplify application:
+  - metrics:
+    - must have:
+      - downstream jitter over gRPC to prometheus and stdout
+      - upstream jitter over gRPC to prometheus and stdout
+      - ping over UDP or ICMP to prometheus and stdout
+    - nice to have metrics
+      - traceroute to prometheus and stdout
+- only one docker compose, not in demo folder
 - update readme with better getting started guide.
 - handle src/dst id/address confusion.
 - back off send rate when failing.
 - handle timeouts that take longer than interval to avoid misreporting packet
   loss.
-- route tracing.
-  - hop filtering in grafana.
-  - more useful visualizations.
-- promote required packages out of internal.
-- at least one alternative to fly.io for demo.
+- at least one alternative to fly.io for running remote peer.
