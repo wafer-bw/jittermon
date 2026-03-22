@@ -35,7 +35,7 @@ scrape_configs:
   scrape_timeout: 1s
   honor_timestamps: true
   track_timestamps_staleness: false
-  metrics_path: /
+  metrics_path: /metrics
   scheme: http
   enable_compression: true
   follow_redirects: true

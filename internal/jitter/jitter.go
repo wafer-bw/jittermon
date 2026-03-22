@@ -1,4 +1,6 @@
 // Package jitter implements interarrival jitter as per RFC3550 Section 6.4.1
+//
+// TODO: promote to public package?
 package jitter
 
 import (

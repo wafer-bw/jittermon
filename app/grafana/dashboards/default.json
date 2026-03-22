@@ -93,7 +93,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "ping (rtt)"
+              "options": "ping"
             },
             "properties": [
               {
@@ -188,22 +188,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "rtt jitter"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "light-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "jitter (rtt)"
+              "options": "jitter"
             },
             "properties": [
               {
@@ -251,7 +236,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "sum(rate(jittermon_downstream_jitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_downstream_jitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
+          "expr": "sum(rate(downstream_jitter_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(downstream_jitter_seconds_count{}[$__rate_interval])) by (src) > 0",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "downstream jitter",
@@ -265,7 +250,7 @@
             "type": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(jittermon_upstream_jitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_upstream_jitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
+          "expr": "sum(rate(upstream_jitter_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(upstream_jitter_seconds_count{}[$__rate_interval])) by (src) > 0",
           "hide": false,
           "instant": false,
           "legendFormat": "upstream jitter",
@@ -278,10 +263,10 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum(rate(jittermon_rtt_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_rtt_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
+          "expr": "sum(rate(ping_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(ping_seconds_count{}[$__rate_interval])) by (src) > 0",
           "hide": false,
           "instant": false,
-          "legendFormat": "ping (rtt)",
+          "legendFormat": "ping",
           "range": true,
           "refId": "C"
         },
@@ -292,7 +277,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "clamp_max(sum by (src) (increase(jittermon_lost_packets_total{}[$__rate_interval])) / sum by (src) (increase(jittermon_sent_packets_total{}[$__rate_interval])), 1)",
+          "expr": "clamp_max(sum by (src) (increase(lost_packets_total{}[$__rate_interval])) / sum by (src) (increase(sent_packets_total{}[$__rate_interval])), 1)",
           "hide": false,
           "instant": false,
           "legendFormat": "packet loss",
@@ -306,11 +291,11 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "sum(rate(jittermon_rtt_jitter_duration_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jittermon_rtt_jitter_duration_seconds_count{}[$__rate_interval])) by (src) > 0",
+          "expr": "sum(rate(jitter_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(jitter_seconds_count{}[$__rate_interval])) by (src) > 0",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "jitter (rtt)",
+          "legendFormat": "jitter",
           "range": true,
           "refId": "E",
           "useBackend": false
@@ -553,7 +538,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "jittermon demo",
+  "title": "jittermon",
   "uid": "aec2tnhcwbuo0b",
-  "version": 4
+  "version": 5
 }

@@ -1,4 +1,4 @@
-package grpcp2platency
+package grpcptp
 
 // export for testing.
 func WithClientConn(conn ClientPoller) ClientOption {

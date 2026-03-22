@@ -35,29 +35,19 @@ echo JITTERMON_JITTER_SEND_ADDRS=FLYADDRESS:8080 > .env
 # build docker image
 docker build -t jittermon .
 # start jittermon locally
-docker compose -f docker-compose.yml up -d
+docker compose up -d
 # observe metrics at http://localhost:3000/d/aec2tnhcwbuo0b
 ```
 ```sh
 # stop
-docker compose -f docker-compose.yml down
+docker compose down
 ```
 
 ## TODOs
-- drastically simplify application:
-  - metrics:
-    - must have:
-      - downstream jitter over gRPC to prometheus and stdout
-      - upstream jitter over gRPC to prometheus and stdout
-      - ping over UDP or ICMP to prometheus and stdout
-      - packet loss for all above metrics to promethus and stdout
-    - nice to have metrics
-      - traceroute to prometheus and stdout
-- only one docker compose, not in demo folder
 - update readme with better getting started guide.
 - handle src/dst id/address confusion.
 - back off send rate when failing.
 - handle timeouts that take longer than interval to avoid misreporting packet
   loss.
 - at least one alternative to fly.io for running remote peer.
-- use buf for protos
+- resolve TODOs in code.
