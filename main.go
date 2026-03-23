@@ -3,110 +3,165 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
-	"github.com/wafer-bw/jittermon/internal/recorder"
-	"github.com/wafer-bw/jittermon/internal/recorder/prometheus"
-	"github.com/wafer-bw/jittermon/internal/sampler/exectraceroute"
-	"github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency"
-	"github.com/wafer-bw/jittermon/internal/sampler/udplatency"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/wafer-bw/jittermon/internal/grpcptp"
+	"github.com/wafer-bw/jittermon/internal/otel"
+	"github.com/wafer-bw/jittermon/internal/udpptx"
 	"golang.org/x/sync/errgroup"
 )
 
 type config struct {
-	PeerID               string                `envconfig:"PEER_ID" default:""`
-	LatencySendAddrs     []string              `envconfig:"LATENCY_SEND_ADDRS" default:"8.8.8.8:53"`
-	LatencyInterval      time.Duration         `envconfig:"LATENCY_INTERVAL" default:"0.25s"`
-	P2PLatencyListenAddr string                `envconfig:"P2P_LATENCY_LISTEN_ADDR" default:""`
-	P2PLatencySendAddrs  []string              `envconfig:"P2P_LATENCY_SEND_ADDRS" default:""`
-	P2PLatencyInterval   time.Duration         `envconfig:"P2P_LATENCY_INTERVAL" default:"1s"`
-	TraceSendAddrs       []string              `envconfig:"TRACE_SEND_ADDRS" default:""`
-	TraceInterval        time.Duration         `envconfig:"TRACE_INTERVAL" default:"1s"`
-	TraceMaxHops         int                   `envconfig:"TRACE_MAX_HOPS" default:"12"`
-	Metrics              []recorder.SampleType `envconfig:"METRICS" default:"rtt,hop_rtt,downstream_jitter,upstream_jitter,sent_packets,lost_packets,rtt_jitter"`
-	MetricsAddr          string                `envconfig:"METRICS_ADDR" default:""`
-	LogLevel             slog.Level            `envconfig:"LOG_LEVEL" default:"INFO"`
+	ID              string        `envconfig:"ID" default:""`
+	PTXAddrs        []string      `envconfig:"PTX_ADDRS" default:""`
+	PTXInterval     time.Duration `envconfig:"PTX_INTERVAL" default:"1s"`
+	PTPListenAddr   string        `envconfig:"PTP_LISTEN_ADDR" default:""`
+	PTPSendAddrs    []string      `envconfig:"PTP_SEND_ADDRS" default:""`
+	PTPInterval     time.Duration `envconfig:"PTP_INTERVAL" default:"1s"`
+	LogLevel        slog.Level    `envconfig:"LOG_LEVEL" default:"INFO"`
+	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"5s"`
+	HTTP            httpConfig    `envconfig:"HTTP"`
+}
+
+type httpConfig struct {
+	Address        string        `envconfig:"ADDR" default:":8082"`
+	MaxHeaderBytes int           `envconfig:"MAX_HEADER_BYTES" default:"32000"` // 32KB
+	MaxBodyBytes   int64         `envconfig:"MAX_BODY_BYTES" default:"512000"`  // 512KB
+	HandlerTimeout time.Duration `envconfig:"HANDLER_TIMEOUT" default:"800ms"`
+	ReadTimeout    time.Duration `envconfig:"READ_TIMEOUT" default:"300ms"`
+	WriteTimeout   time.Duration `envconfig:"WRITE_TIMEOUT" default:"1s"`
+	IdleTimeout    time.Duration `envconfig:"IDLE_TIMEOUT" default:"15s"`
+	StoppingCh     chan struct{} `envconfig:"-"`
 }
 
 func main() {
 	ctx := context.Background()
-	conf := config{}
-	envconfig.MustProcess("JITTERMON", &conf)
 
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: conf.LogLevel}))
+	cfg := config{HTTP: httpConfig{StoppingCh: make(chan struct{})}}
+	envconfig.MustProcess("JITTERMON", &cfg)
+	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel}))
 
-	if err := run(ctx, log, conf); err != nil {
+	cfg.ID = strings.TrimSpace(cfg.ID)
+	if cfg.ID == "" {
+		log.Error("JITTERMON_ID environment variable is required")
+		os.Exit(1)
+	}
+
+	if err := run(ctx, log, cfg); err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, log *slog.Logger, conf config) error {
+func run(ctx context.Context, log *slog.Logger, cfg config) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	otelShutdown, err := otel.Setup(ctx, cfg.ID)
+	if err != nil {
+		return err
+	}
+	defer otelShutdown(ctx) //nolint:errcheck // deferred shutdown.
+
 	eg, ctx := errgroup.WithContext(ctx)
 
-	recorders := []recorder.ChainLink{recorder.MetricFilter(conf.Metrics...)}
-	if conf.MetricsAddr != "" {
-		prometheus, err := prometheus.New(conf.MetricsAddr,
-			prometheus.WithLog(log),
-			prometheus.WithID(conf.PeerID),
-		)
-		if err != nil {
-			return err
-		}
-		eg.Go(func() error { return prometheus.Run(ctx) })
-		recorders = append(recorders, prometheus.DefaultRecorders()...)
-	}
-	chain := recorder.Chain(recorders...)
+	eg.Go(func() error { return startHTTPServer(ctx, log, cfg.HTTP) })
 
-	for _, addr := range conf.LatencySendAddrs {
-		client, err := udplatency.New(addr, chain,
-			udplatency.WithID(conf.PeerID),
-			udplatency.WithInterval(conf.LatencyInterval),
-			udplatency.WithLog(log),
-		)
-		if err != nil {
-			return err
+	for _, addr := range cfg.PTXAddrs {
+		client := udpptx.Client{
+			ID:                 cfg.ID,
+			Address:            addr,
+			Interval:           cfg.PTXInterval,
+			SentPacketsCounter: otel.SentPacketsCounter,
+			LostPacketsCounter: otel.LostPacketsCounter,
+			PingHistogram:      otel.PingHistogram,
+			JitterHistogram:    otel.JitterHistogram,
+			Log:                log,
 		}
-		eg.Go(func() error { return client.Run(ctx) })
+		eg.Go(func() error { return client.Start(ctx) })
 	}
 
-	if conf.P2PLatencyListenAddr != "" {
-		server, err := grpcp2platency.NewServer(conf.P2PLatencyListenAddr, chain,
-			grpcp2platency.WithServerID(conf.PeerID),
-			grpcp2platency.WithServerLog(log),
-		)
-		if err != nil {
-			return err
+	for _, addr := range cfg.PTPSendAddrs {
+		client := grpcptp.Client{
+			ID:                      cfg.ID,
+			Address:                 addr,
+			Interval:                cfg.PTPInterval,
+			SentPacketsCounter:      otel.SentPacketsCounter,
+			LostPacketsCounter:      otel.LostPacketsCounter,
+			PingHistogram:           otel.PingHistogram,
+			UpstreamJitterHistogram: otel.UpstreamJitterHistogram,
+			Log:                     log,
 		}
-		eg.Go(func() error { return server.Run(ctx) })
+		eg.Go(func() error { return client.Start(ctx) })
 	}
 
-	for _, addr := range conf.P2PLatencySendAddrs {
-		client, err := grpcp2platency.NewClient(addr, chain,
-			grpcp2platency.WithClientID(conf.PeerID),
-			grpcp2platency.WithClientInterval(conf.P2PLatencyInterval),
-			grpcp2platency.WithClientLog(log),
-		)
-		if err != nil {
-			return err
+	if cfg.PTPListenAddr != "" {
+		server := grpcptp.Server{
+			ID:                        cfg.ID,
+			Address:                   cfg.PTPListenAddr,
+			DownstreamJitterHistogram: otel.DownstreamJitterHistogram,
+			Log:                       log,
 		}
-		eg.Go(func() error { return client.Run(ctx) })
-	}
-
-	for _, addr := range conf.TraceSendAddrs {
-		client, err := exectraceroute.NewTraceRoute(addr, chain,
-			exectraceroute.WithID(conf.PeerID),
-			exectraceroute.WithInterval(conf.TraceInterval),
-			exectraceroute.WithMaxHops(conf.TraceMaxHops),
-			exectraceroute.WithLog(log),
-		)
-		if err != nil {
-			return err
-		}
-		eg.Go(func() error { return client.Run(ctx) })
+		eg.Go(func() error { return server.Start(ctx) })
 	}
 
 	return eg.Wait()
+}
+
+func startHTTPServer(ctx context.Context, log *slog.Logger, cfg httpConfig) error {
+	name := "http server"
+
+	maxBytes := func(next http.Handler) http.Handler {
+		return http.MaxBytesHandler(next, cfg.MaxBodyBytes)
+	}
+	timeout := func(next http.Handler) http.Handler {
+		return http.TimeoutHandler(next, cfg.HandlerTimeout, "service timeout")
+	}
+
+	chainBeforeMux := []func(http.Handler) http.Handler{maxBytes, timeout}
+	chainAfterMux := []func(http.Handler) http.Handler{}
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", promhttp.Handler())
+
+	s := &http.Server{
+		Addr:           cfg.Address,
+		MaxHeaderBytes: cfg.MaxHeaderBytes,
+		ReadTimeout:    cfg.ReadTimeout,
+		WriteTimeout:   cfg.WriteTimeout,
+		IdleTimeout:    cfg.IdleTimeout,
+		Handler:        use(use(mux, chainAfterMux...), chainBeforeMux...),
+	}
+
+	log.InfoContext(ctx, "starting", "name", name, "address", cfg.Address)
+
+	errCh := make(chan error)
+	go func() {
+		if err := s.ListenAndServe(); err != nil {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
+		return ctx.Err()
+	case err := <-errCh:
+		log.ErrorContext(ctx, "server failed", "name", name, "err", err)
+		return err
+	}
+}
+
+// use wraps an [http.Handler] with the provided middlewares.
+func use(handler http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		handler = middlewares[i](handler)
+	}
+	return handler
 }

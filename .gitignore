@@ -29,7 +29,7 @@ go.work.sum
 *.json
 
 # Include tracked grafana dashboards
-!demo/grafana/**/*.json
+!app/grafana/**/*.json
 
 # Scratch files
 cmd/scratch*/**/*.go

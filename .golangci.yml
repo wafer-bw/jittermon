@@ -1,76 +1,89 @@
+version: "2"
 run:
-  go: "1.24"
+  go: "1.26"
 linters:
   enable:
-    - govet
     - asciicheck
     - bidichk
     - bodyclose
     - containedctx
+    - dogsled
+    - dupword
     - durationcheck
     - errname
     - errorlint
+    - exhaustive
     - forcetypeassert
+    - funlen
     - goconst
-    - testpackage
-    - mnd
+    - godot
+    - gosec
     - makezero
+    - misspell
+    - mnd
+    - nakedret
+    - nestif
     - nilerr
     - nilnil
     - nlreturn
+    - nolintlint
+    - nosprintfhostport
     - prealloc
     - predeclared
+    - revive
     - rowserrcheck
     - sqlclosecheck
-    - usetesting
+    - tagliatelle
+    - testpackage
+    - tparallel
     - unconvert
     - unparam
+    - usetesting
     - wastedassign
     - whitespace
-    - nolintlint
-    - tparallel
-    - godot
-    - gocritic
-    - misspell
-    - nakedret
-    - nestif
-    - dogsled
-    - dupword
-    - gochecknoinits
-    - gosec
-    - tagliatelle
-    - nosprintfhostport
-    - funlen
-    - revive
-    - exhaustive
-
-linters-settings:
-  nestif:
-    min-complexity: 8
-  nlreturn:
+  settings:
+    funlen:
+      lines: 100
+      statements: 50
+    nestif:
+      min-complexity: 8
+    nlreturn:
       block-size: 12
-  goconst:
-    ignore-tests: true
-  gosec:
-    exclude-generated: true
-  nolintlint:
-    allow-unused: false
-    require-explanation: true
-    require-specific: true
-  funlen:
-    lines: 100
-    statements: 50
-  revive:
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+    revive:
+      rules:
+        - name: var-naming
+          disabled: false
+    staticcheck:
+      checks:
+        - -S1016
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: var-naming
-        disabled: false
-  gosimple:
-    checks:
-      - "-S1016"
-issues:
-  exclude-rules:
-    - path: _test.go # ignore following linters in *_test.go files
-      linters:
-        - funlen
-        - dupl
-        - unparam
+      - linters:
+          - dupl
+          - funlen
+          - unparam
+        path: _test.go
+      - linters:
+          - goconst
+        path: (.+)_test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

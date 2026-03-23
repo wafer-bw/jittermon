@@ -1,0 +1,98 @@
+services:
+
+  jittermon:
+    image: jittermon:latest
+    restart: always
+    depends_on:
+      - grafana
+      - prometheus
+      - loki
+      - promtail
+    networks:
+      - jittermon-network
+    ports:
+      - "8081:8081"
+      - "8082:8082"
+    environment:
+      JITTERMON_ID: localhost
+      JITTERMON_PTX_ADDRS: 8.8.8.8:53
+      JITTERMON_PTX_INTERVAL: 1s
+      JITTERMON_PTP_LISTEN_ADDR: :8081
+      JITTERMON_PTP_INTERVAL: 1s
+      JITTERMON_LOG_LEVEL: DEBUG
+      JITTERMON_SHUTDOWN_TIMEOUT: 5s
+      JITTERMON_HTTP_ADDR: :8082
+      JITTERMON_HTTP_MAX_HEADER_BYTES: "32000"
+      JITTERMON_HTTP_MAX_BODY_BYTES: "512000"
+      JITTERMON_HTTP_HANDLER_TIMEOUT: 800ms
+      JITTERMON_HTTP_READ_TIMEOUT: 300ms
+      JITTERMON_HTTP_WRITE_TIMEOUT: 1s
+      JITTERMON_HTTP_IDLE_TIMEOUT: 15s
+    env_file:
+      - .env
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    restart: always
+    networks:
+      - jittermon-network
+    ports:
+      - "3000:3000"
+    volumes:
+      - jittermon-grafana-data:/var/lib/grafana
+      - ./app/grafana/provisioning:/etc/grafana/provisioning
+      - ./app/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=demo
+      - GF_SECURITY_ADMIN_PASSWORD=demo
+
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    restart: always
+    depends_on:
+      - grafana
+    networks:
+      - jittermon-network
+    ports:
+      - "9090:9090"
+    volumes:
+      - jittermon-prometheus-data:/prometheus
+      - ./app/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command: --config.file=/etc/prometheus/prometheus.yml
+
+  loki:
+    image: grafana/loki:3.4.1
+    restart: always
+    depends_on:
+      - grafana
+    networks:
+      - jittermon-network
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - jittermon-loki-data:/loki
+      - ./app/loki:/etc/loki
+
+  promtail:
+    image: grafana/promtail:3.4.1
+    restart: always
+    depends_on:
+      - loki
+      - prometheus
+    networks:
+      - jittermon-network
+    volumes:
+      - ./app/promtail:/etc/promtail
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/promtail.yml
+
+networks:
+  jittermon-network:
+    driver: bridge
+
+volumes:
+  jittermon-grafana-data:
+  jittermon-prometheus-data:
+  jittermon-loki-data:

@@ -1,0 +1,13 @@
+edition = "2023";
+
+package poll.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message PollRequest {
+  // The identity of the node sending this message.
+  string id = 1;
+
+  // The time this message was sent.
+  google.protobuf.Timestamp timestamp = 2;
+}
