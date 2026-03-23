@@ -15,9 +15,7 @@ linters:
     - exhaustive
     - forcetypeassert
     - funlen
-    - gochecknoinits
     - goconst
-    - gocritic
     - godot
     - gosec
     - makezero

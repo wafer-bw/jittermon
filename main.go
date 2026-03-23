@@ -66,7 +66,7 @@ func run(ctx context.Context, log *slog.Logger, cfg config) error {
 	if err != nil {
 		return err
 	}
-	defer otelShutdown(ctx)
+	defer otelShutdown(ctx) //nolint:errcheck // deferred shutdown.
 
 	eg, ctx := errgroup.WithContext(ctx)
 

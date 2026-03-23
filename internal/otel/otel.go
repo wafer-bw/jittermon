@@ -104,11 +104,10 @@ func init() {
 }
 
 type otelConfig struct {
-	serviceName        string
-	serviceVersion     string
-	serviceInstanceID  string
-	sampleRatio        float64
-	prometheusExporter *prometheus.Exporter
+	serviceName       string
+	serviceVersion    string
+	serviceInstanceID string
+	sampleRatio       float64
 }
 
 func Setup(ctx context.Context, id string) (shutdown func(context.Context) error, err error) {

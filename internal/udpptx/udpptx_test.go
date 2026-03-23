@@ -125,7 +125,7 @@ func TestClient_Poll(t *testing.T) {
 func TestClient_Start(t *testing.T) {
 	t.Parallel()
 
-	t.Run("sucessful start", func(t *testing.T) {
+	t.Run("successful start", func(t *testing.T) {
 		t.Parallel()
 
 		ctx, cancel := context.WithCancel(t.Context())
