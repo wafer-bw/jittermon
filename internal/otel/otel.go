@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wafer-bw/go-toolbox/graceful"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -112,9 +111,9 @@ type otelConfig struct {
 	prometheusExporter *prometheus.Exporter
 }
 
-func Setup(ctx context.Context, id string) (graceful.RunnerType, error) {
+func Setup(ctx context.Context, id string) (shutdown func(context.Context) error, err error) {
 	if id == "" {
-		return graceful.RunnerType{}, errors.New("id cannot be empty")
+		return shutdown, errors.New("id cannot be empty")
 	}
 
 	cfg := otelConfig{
@@ -129,11 +128,11 @@ func Setup(ctx context.Context, id string) (graceful.RunnerType, error) {
 	}
 
 	if cfg.serviceName == "" {
-		return graceful.RunnerType{}, errors.New("unable to identify service name")
+		return shutdown, errors.New("unable to identify service name")
 	} else if cfg.serviceVersion == "" {
-		return graceful.RunnerType{}, errors.New("unable to identify service version")
+		return shutdown, errors.New("unable to identify service version")
 	} else if cfg.serviceInstanceID == "" {
-		return graceful.RunnerType{}, errors.New("unable to identify service instance ID")
+		return shutdown, errors.New("unable to identify service instance ID")
 	}
 
 	resource := resource.NewWithAttributes(
@@ -144,7 +143,7 @@ func Setup(ctx context.Context, id string) (graceful.RunnerType, error) {
 	)
 
 	var shutdownFuncs []func(context.Context) error
-	shutdown := func(ctx context.Context) error {
+	shutdown = func(ctx context.Context) error {
 		var errs error
 		for _, fn := range shutdownFuncs {
 			errs = errors.Join(errs, fn(ctx))
@@ -162,7 +161,7 @@ func Setup(ctx context.Context, id string) (graceful.RunnerType, error) {
 	// trace
 	traceExporter, err := otlptrace.New(ctx, otlptracehttp.NewClient())
 	if err != nil {
-		return graceful.RunnerType{}, errors.Join(err, shutdown(ctx))
+		return shutdown, errors.Join(err, shutdown(ctx))
 	}
 	tracerProvider := trace.NewTracerProvider(
 		trace.WithResource(resource),
@@ -175,7 +174,7 @@ func Setup(ctx context.Context, id string) (graceful.RunnerType, error) {
 	// meter
 	meterExporter, err := prometheus.New()
 	if err != nil {
-		return graceful.RunnerType{}, errors.Join(err, shutdown(ctx))
+		return shutdown, errors.Join(err, shutdown(ctx))
 	}
 	meterProvider := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(resource),
@@ -185,15 +184,8 @@ func Setup(ctx context.Context, id string) (graceful.RunnerType, error) {
 	otel.SetMeterProvider(meterProvider)
 
 	if err := runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second)); err != nil {
-		return graceful.RunnerType{}, errors.Join(err, shutdown(ctx))
+		return shutdown, errors.Join(err, shutdown(ctx))
 	}
 
-	return graceful.RunnerType{
-		StopFunc: func(ctx context.Context) error {
-			if err := shutdown(ctx); err != nil {
-				return fmt.Errorf("otel graceful shutdown failed: %w", err)
-			}
-			return nil
-		},
-	}, nil
+	return shutdown, nil
 }

@@ -2,22 +2,18 @@ package main
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/wafer-bw/go-toolbox/graceful"
-	"github.com/wafer-bw/go-toolbox/probe"
 	"github.com/wafer-bw/jittermon/internal/grpcptp"
 	"github.com/wafer-bw/jittermon/internal/otel"
 	"github.com/wafer-bw/jittermon/internal/udpptx"
+	"golang.org/x/sync/errgroup"
 )
 
 type config struct {
@@ -63,60 +59,61 @@ func main() {
 }
 
 func run(ctx context.Context, log *slog.Logger, cfg config) error {
-	httpServer := setupHTTP(ctx, log, cfg.HTTP)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	otelShutdown, err := otel.Setup(ctx, cfg.ID)
 	if err != nil {
 		return err
 	}
-	defer otelShutdown.StopFunc(ctx)
+	defer otelShutdown(ctx)
 
-	group := graceful.Group{httpServer, otelShutdown}
+	eg, ctx := errgroup.WithContext(ctx)
+
+	eg.Go(func() error { return startHTTPServer(ctx, log, cfg.HTTP) })
 
 	for _, addr := range cfg.PTXAddrs {
-		udpptxClient, err := udpptx.New(cfg.ID, addr,
-			udpptx.WithInterval(cfg.PTXInterval),
-			udpptx.WithLog(log),
-		)
-		if err != nil {
-			return fmt.Errorf("failed to create udpptx client for %s: %w", addr, err)
+		client := udpptx.Client{
+			ID:                 cfg.ID,
+			Address:            addr,
+			Interval:           cfg.PTXInterval,
+			SentPacketsCounter: otel.SentPacketsCounter,
+			LostPacketsCounter: otel.LostPacketsCounter,
+			PingHistogram:      otel.PingHistogram,
+			JitterHistogram:    otel.JitterHistogram,
+			Log:                log,
 		}
-		group = append(group, udpptxClient)
+		eg.Go(func() error { return client.Start(ctx) })
 	}
 
 	for _, addr := range cfg.PTPSendAddrs {
-		grpcptpClient, err := grpcptp.NewClient(cfg.ID, addr,
-			grpcptp.WithClientInterval(cfg.PTPInterval),
-			grpcptp.WithClientLog(log),
-		)
-		if err != nil {
-			return fmt.Errorf("failed to create grpcptp client for %s: %w", addr, err)
+		client := grpcptp.Client{
+			ID:                      cfg.ID,
+			Address:                 addr,
+			Interval:                cfg.PTPInterval,
+			SentPacketsCounter:      otel.SentPacketsCounter,
+			LostPacketsCounter:      otel.LostPacketsCounter,
+			PingHistogram:           otel.PingHistogram,
+			UpstreamJitterHistogram: otel.UpstreamJitterHistogram,
+			Log:                     log,
 		}
-		group = append(group, grpcptpClient)
+		eg.Go(func() error { return client.Start(ctx) })
 	}
 
 	if cfg.PTPListenAddr != "" {
-		grpcptpServer, err := grpcptp.NewServer(cfg.ID, cfg.PTPListenAddr,
-			grpcptp.WithServerLog(log),
-		)
-		if err != nil {
-			return fmt.Errorf("failed to create grpcptp server for %s: %w", cfg.PTPListenAddr, err)
+		server := grpcptp.Server{
+			ID:                        cfg.ID,
+			Address:                   cfg.PTPListenAddr,
+			DownstreamJitterHistogram: otel.DownstreamJitterHistogram,
+			Log:                       log,
 		}
-		group = append(group, grpcptpServer)
+		eg.Go(func() error { return server.Start(ctx) })
 	}
 
-	if err := group.Run(ctx,
-		graceful.WithStopSignals(syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM),
-		graceful.WithStopTimeout(cfg.ShutdownTimeout),
-		graceful.WithStoppingCh(cfg.HTTP.StoppingCh),
-	); err != nil {
-		return err
-	}
-
-	return nil
+	return eg.Wait()
 }
 
-func setupHTTP(ctx context.Context, log *slog.Logger, cfg httpConfig) graceful.RunnerType {
+func startHTTPServer(ctx context.Context, log *slog.Logger, cfg httpConfig) error {
 	name := "http server"
 
 	maxBytes := func(next http.Handler) http.Handler {
@@ -125,29 +122,12 @@ func setupHTTP(ctx context.Context, log *slog.Logger, cfg httpConfig) graceful.R
 	timeout := func(next http.Handler) http.Handler {
 		return http.TimeoutHandler(next, cfg.HandlerTimeout, "service timeout")
 	}
-	readiness := func(ctx context.Context) error {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-cfg.StoppingCh:
-			return errors.New("service is stopping")
-		default:
-			return nil
-		}
-	}
-
-	startupProbes := probe.Group{}
-	livenessProbes := probe.Group{}
-	readinessProbes := probe.Group{"server": probe.ProberFunc(readiness)}
 
 	chainBeforeMux := []func(http.Handler) http.Handler{maxBytes, timeout}
 	chainAfterMux := []func(http.Handler) http.Handler{}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.Handler())
-	mux.Handle("GET /probes/startup", startupProbes)
-	mux.Handle("GET /probes/liveness", livenessProbes)
-	mux.Handle("GET /probes/readiness", readinessProbes)
 
 	s := &http.Server{
 		Addr:           cfg.Address,
@@ -160,19 +140,21 @@ func setupHTTP(ctx context.Context, log *slog.Logger, cfg httpConfig) graceful.R
 
 	log.InfoContext(ctx, "starting", "name", name, "address", cfg.Address)
 
-	return graceful.RunnerType{
-		StartFunc: func(ctx context.Context) error {
-			if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				return fmt.Errorf("http server error: %w", err)
-			}
-			return nil
-		},
-		StopFunc: func(ctx context.Context) error {
-			if err := s.Shutdown(ctx); err != nil {
-				return fmt.Errorf("http server graceful shutdown failed: %w", err)
-			}
-			return nil
-		},
+	errCh := make(chan error)
+	go func() {
+		if err := s.ListenAndServe(); err != nil {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
+		return ctx.Err()
+	case err := <-errCh:
+		log.ErrorContext(ctx, "server failed", "name", name, "err", err)
+		return err
 	}
 }
 

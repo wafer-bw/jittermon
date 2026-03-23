@@ -14,12 +14,19 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+type Int64Counter interface {
+	Add(ctx context.Context, incr int64, options ...metric.AddOption)
+}
+
+type Float64Histogram interface {
+	Record(ctx context.Context, incr float64, options ...metric.RecordOption)
+}
+
 const (
-	name             string        = "udp ptx client"
-	defaultInterval  time.Duration = 1 * time.Second
-	defaultTimeout   time.Duration = defaultInterval * time.Duration(2)
-	defaultPollGrace int           = 1
-	replyBufferSize  int           = 512
+	name              string        = "udp ptx client"
+	defaultInterval   time.Duration = 1 * time.Second
+	startingPollGrace int           = 1
+	replyBufferSize   int           = 512
 )
 
 var (
@@ -27,110 +34,81 @@ var (
 	packet     = []byte{0x12, 0x34, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 )
 
-type Option func(*Client) error
-
-func WithInterval(interval time.Duration) Option {
-	return func(c *Client) error {
-		if interval <= 0 {
-			return nil
-		}
-		c.interval = interval
-		return nil
-	}
-}
-
-func WithTimeout(timeout time.Duration) Option {
-	return func(c *Client) error {
-		if timeout <= 0 {
-			return nil
-		}
-		c.timeout = timeout
-		return nil
-	}
-}
-
-func WithLog(log *slog.Logger) Option {
-	return func(c *Client) error {
-		if log == nil {
-			return nil
-		}
-		c.log = log
-		return nil
-	}
-}
-
 type Client struct {
-	id        string
-	address   string
-	interval  time.Duration
-	timeout   time.Duration
-	log       *slog.Logger
-	jitter    *jitter.Buffer
+	ID                 string
+	Address            string
+	SentPacketsCounter Int64Counter
+	LostPacketsCounter Int64Counter
+	PingHistogram      Float64Histogram
+	JitterHistogram    Float64Histogram
+
+	Interval time.Duration
+	Timeout  time.Duration
+	Log      *slog.Logger
+
 	pollGrace int
-}
-
-func New(id string, address string, options ...Option) (*Client, error) {
-	if id == "" {
-		return nil, fmt.Errorf("id cannot be empty")
-	} else if address == "" {
-		return nil, fmt.Errorf("address cannot be empty")
-	}
-
-	c := &Client{
-		id:        id,
-		address:   address,
-		jitter:    &jitter.Buffer{},
-		interval:  defaultInterval,
-		timeout:   defaultTimeout,
-		log:       defaultLog,
-		pollGrace: defaultPollGrace,
-	}
-
-	for _, option := range options {
-		if err := option(c); err != nil {
-			return nil, fmt.Errorf("apply option: %w", err)
-		}
-	}
-
-	return c, nil
+	jitter    *jitter.Buffer
 }
 
 func (c *Client) Poll(ctx context.Context) error {
 	attributes := metric.WithAttributes(
-		attribute.String(otel.SourceLabelName, c.id),
-		attribute.String(otel.DestinationLabelName, c.address),
+		attribute.String(otel.SourceLabelName, c.ID),
+		attribute.String(otel.DestinationLabelName, c.Address),
 	)
-
 	start := time.Now()
+	if c.jitter == nil {
+		c.jitter = &jitter.Buffer{}
+	}
+	if c.Log == nil {
+		c.Log = defaultLog
+	}
 
-	otel.SentPacketsCounter.Add(ctx, 1, attributes)
-	c.log.DebugContext(ctx, otel.SentPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.id, otel.DestinationLabelName, c.address)
+	c.SentPacketsCounter.Add(ctx, 1, attributes)
+	c.Log.DebugContext(ctx, otel.SentPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
 	if err := c.poll(ctx); err != nil {
-		otel.LostPacketsCounter.Add(ctx, 1, attributes)
-		c.log.DebugContext(ctx, otel.LostPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.id, otel.DestinationLabelName, c.address)
+		fmt.Println(err)
+		c.LostPacketsCounter.Add(ctx, 1, attributes)
+		c.Log.DebugContext(ctx, otel.LostPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
 		return err
 	}
 	end := time.Now()
 
 	rtt := end.Sub(start)
-	otel.PingHistogram.Record(ctx, rtt.Seconds(), attributes)
-	c.log.DebugContext(ctx, otel.PingMetricName, "value", strconv.FormatFloat(rtt.Seconds(), 'f', 6, 64), otel.SourceLabelName, c.id, otel.DestinationLabelName, c.address)
+	c.PingHistogram.Record(ctx, rtt.Seconds(), attributes)
+	c.Log.DebugContext(ctx, otel.PingMetricName, "value", strconv.FormatFloat(rtt.Seconds(), 'f', 6, 64), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
 
-	jitter, ok := c.jitter.Interarrival(c.id, start, end)
+	jitter, ok := c.jitter.Interarrival(c.ID, start, end)
 	if !ok {
 		return fmt.Errorf("no jitter in response")
 	}
-	otel.JitterHistogram.Record(ctx, jitter.Seconds(), attributes)
-	c.log.DebugContext(ctx, otel.JitterMetricName, "value", strconv.FormatFloat(jitter.Seconds(), 'f', 6, 64), otel.SourceLabelName, c.id, otel.DestinationLabelName, c.address)
+	c.JitterHistogram.Record(ctx, jitter.Seconds(), attributes)
+	c.Log.DebugContext(ctx, otel.JitterMetricName, "value", strconv.FormatFloat(jitter.Seconds(), 'f', 6, 64), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
 
 	return nil
 }
 
 func (c *Client) Start(ctx context.Context) error {
-	ticker := time.NewTicker(c.interval)
+	if c.ID == "" {
+		return fmt.Errorf("%s client start: id cannot be empty", name)
+	} else if c.Address == "" {
+		return fmt.Errorf("%s client start: address cannot be empty", name)
+	} else if c.Interval <= 0 {
+		c.Interval = defaultInterval
+	}
+
+	if c.Timeout <= 0 {
+		c.Timeout = c.Interval
+	}
+	if c.Log == nil {
+		c.Log = defaultLog
+	}
+	c.pollGrace = startingPollGrace
+	c.jitter = &jitter.Buffer{}
+
+	ticker := time.NewTicker(c.Interval)
 	defer ticker.Stop()
 
-	c.log.InfoContext(ctx, "starting", "name", name, "address", c.address, "interval", c.interval)
+	c.Log.InfoContext(ctx, "starting", "name", name, "address", c.Address, "interval", c.Interval)
 
 	for {
 		select {
@@ -139,30 +117,25 @@ func (c *Client) Start(ctx context.Context) error {
 				if c.pollGrace > 0 {
 					c.pollGrace--
 				} else {
-					c.log.ErrorContext(ctx, "poll failed", "name", name, "err", err)
+					c.Log.ErrorContext(ctx, "poll failed", "name", name, "err", err)
 				}
 				continue
 			}
 		case <-ctx.Done():
-			c.log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
+			c.Log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
 			return ctx.Err()
 		}
 	}
 }
 
-// TODO: implement.
-func (c *Client) Stop(ctx context.Context) error {
-	return nil
-}
-
 func (c *Client) poll(_ context.Context) error {
-	conn, err := net.Dial("udp", c.address)
+	conn, err := net.Dial("udp", c.Address)
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
 	defer conn.Close()
 
-	if err := conn.SetReadDeadline(time.Now().Add(c.timeout)); err != nil {
+	if err := conn.SetReadDeadline(time.Now().Add(c.Timeout)); err != nil {
 		return fmt.Errorf("set read deadline: %w", err)
 	}
 

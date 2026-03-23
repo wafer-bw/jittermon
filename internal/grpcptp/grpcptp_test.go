@@ -1,208 +1,374 @@
 package grpcptp_test
 
-// //go:generate go run go.uber.org/mock/mockgen -source=grpc.go -destination=grpc_mocks_test.go -package=grpcp2platency_test
+//go:generate go run go.uber.org/mock/mockgen -source=grpcptp.go -destination=grpcptp_mocks_test.go -package=grpcptp_test
 
-// import (
-// 	"context"
-// 	"errors"
-// 	"testing"
-// 	"time"
+import (
+	"context"
+	"errors"
+	"net"
+	"strconv"
+	"testing"
+	"time"
 
-// 	"github.com/stretchr/testify/require"
-// 	pollpb "github.com/wafer-bw/jittermon/internal/gen/go/poll/v1"
-// 	"github.com/wafer-bw/jittermon/internal/recorder"
-// 	"github.com/wafer-bw/jittermon/internal/sampler/grpcp2platency"
-// 	"go.uber.org/mock/gomock"
-// 	"google.golang.org/protobuf/types/known/durationpb"
-// 	"google.golang.org/protobuf/types/known/timestamppb"
-// )
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/require"
+	pollpb "github.com/wafer-bw/jittermon/internal/gen/go/poll/v1"
+	"github.com/wafer-bw/jittermon/internal/grpcptp"
+	"go.opentelemetry.io/otel/metric"
+	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
 
-// func TestClient_Poll(t *testing.T) {
-// 	t.Parallel()
+func TestClient_Poll(t *testing.T) {
+	t.Parallel()
 
-// 	addr := "localhost:12345"
+	addr := "localhost:12345"
 
-// 	t.Run("successful poll", func(t *testing.T) {
-// 		t.Parallel()
+	t.Run("successful poll", func(t *testing.T) {
+		t.Parallel()
 
-// 		ctx := t.Context()
-// 		start := time.Now()
-// 		jitter := 5 * time.Millisecond
-// 		mockClient := NewMockClientPoller(gomock.NewController(t))
-// 		mockRecorder := NewMockRecorder(gomock.NewController(t))
+		ctx := t.Context()
 
-// 		client, err := grpcp2platency.NewClient(addr, mockRecorder, grpcp2platency.WithClientConn(mockClient))
-// 		require.NoError(t, err)
+		start := time.Now()
+		jitter := 5 * time.Millisecond
+		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockSentPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockLostPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockPingHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		mockUpstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		client := grpcptp.Client{
+			ID:                      "test",
+			Address:                 addr,
+			SentPacketsCounter:      mockSentPacketsCounter,
+			LostPacketsCounter:      mockLostPacketsCounter,
+			PingHistogram:           mockPingHistogram,
+			UpstreamJitterHistogram: mockUpstreamJitterHistogram,
+			Conn:                    mockClient,
+			Timeout:                 25 * time.Millisecond,
+		}
+		resp := pollpb.PollResponse_builder{
+			Id:     new("server"),
+			Jitter: durationpb.New(jitter),
+		}.Build()
 
-// 		resp := &pollpb.PollResponse{}
-// 		resp.SetId("server")
-// 		resp.SetJitter(durationpb.New(jitter))
+		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), int64(1), gomock.Any()).Times(1)
+		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(resp, nil).Times(1)
+		mockPingHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(ctx context.Context, val float64, opts ...metric.RecordOption) {
+			require.Less(t, val, time.Since(start).Seconds())
+			require.NotZero(t, val)
+		}).Times(1)
+		mockUpstreamJitterHistogram.EXPECT().Record(gomock.Any(), jitter.Seconds(), gomock.Any()).Times(1)
 
-// 		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(resp, nil).Times(1)
-// 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, sample recorder.Sample) {
-// 			require.Equal(t, recorder.SampleTypeSentPackets, sample.Type)
-// 			require.Equal(t, struct{}{}, sample.Val)
-// 		}).Times(1)
-// 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, sample recorder.Sample) {
-// 			require.Equal(t, recorder.SampleTypeRTT, sample.Type)
-// 			require.NotZero(t, sample.Val)
-// 			v, ok := sample.Val.(time.Duration)
-// 			require.True(t, ok)
-// 			require.Less(t, v, time.Since(start))
-// 		}).Times(1)
-// 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, sample recorder.Sample) {
-// 			require.Equal(t, recorder.SampleTypeUpstreamJitter, sample.Type)
-// 			require.Equal(t, jitter, sample.Val)
-// 		}).Times(1)
+		err := client.Poll(ctx)
+		require.NoError(t, err)
+	})
 
-// 		err = client.Poll(ctx)
-// 		require.NoError(t, err)
-// 	})
+	t.Run("failed poll", func(t *testing.T) {
+		t.Parallel()
 
-// 	t.Run("failed poll", func(t *testing.T) {
-// 		t.Parallel()
+		ctx := t.Context()
 
-// 		ctx := t.Context()
-// 		jitter := 5 * time.Millisecond
-// 		mockClient := NewMockClientPoller(gomock.NewController(t))
-// 		mockRecorder := NewMockRecorder(gomock.NewController(t))
+		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockSentPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockLostPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockPingHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		mockUpstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		client := grpcptp.Client{
+			ID:                      "test",
+			Address:                 addr,
+			SentPacketsCounter:      mockSentPacketsCounter,
+			LostPacketsCounter:      mockLostPacketsCounter,
+			PingHistogram:           mockPingHistogram,
+			UpstreamJitterHistogram: mockUpstreamJitterHistogram,
+			Conn:                    mockClient,
+			Timeout:                 25 * time.Millisecond,
+		}
 
-// 		client, err := grpcp2platency.NewClient(addr, mockRecorder, grpcp2platency.WithClientConn(mockClient))
-// 		require.NoError(t, err)
+		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), int64(1), gomock.Any()).Times(1)
+		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error")).Times(1)
+		mockLostPacketsCounter.EXPECT().Add(gomock.Any(), int64(1), gomock.Any()).Times(1)
 
-// 		resp := &pollpb.PollResponse{}
-// 		resp.SetId("server")
-// 		resp.SetJitter(durationpb.New(jitter))
+		err := client.Poll(ctx)
+		require.Error(t, err)
+	})
 
-// 		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error")).Times(1)
-// 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, sample recorder.Sample) {
-// 			require.Equal(t, recorder.SampleTypeSentPackets, sample.Type)
-// 			require.Equal(t, struct{}{}, sample.Val)
-// 		}).Times(1)
-// 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, sample recorder.Sample) {
-// 			require.Equal(t, recorder.SampleTypeLostPackets, sample.Type)
-// 			require.Equal(t, struct{}{}, sample.Val)
-// 		}).Times(1)
+	t.Run("returns error on missing response id", func(t *testing.T) {
+		t.Parallel()
 
-// 		err = client.Poll(ctx)
-// 		require.Error(t, err)
-// 	})
+		ctx := t.Context()
 
-// 	t.Run("returns error on missing response id", func(t *testing.T) {
-// 		t.Parallel()
+		jitter := 5 * time.Millisecond
+		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockSentPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockLostPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockPingHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		mockUpstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		client := grpcptp.Client{
+			ID:                      "test",
+			Address:                 addr,
+			SentPacketsCounter:      mockSentPacketsCounter,
+			LostPacketsCounter:      mockLostPacketsCounter,
+			PingHistogram:           mockPingHistogram,
+			UpstreamJitterHistogram: mockUpstreamJitterHistogram,
+			Conn:                    mockClient,
+			Timeout:                 25 * time.Millisecond,
+		}
+		resp := pollpb.PollResponse_builder{Jitter: durationpb.New(jitter)}.Build()
 
-// 		ctx := t.Context()
-// 		jitter := 5 * time.Millisecond
-// 		mockClient := NewMockClientPoller(gomock.NewController(t))
-// 		mockRecorder := NewMockRecorder(gomock.NewController(t))
+		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), int64(1), gomock.Any()).Times(1)
+		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(resp, nil).Times(1)
+		mockPingHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
-// 		client, err := grpcp2platency.NewClient(addr, mockRecorder, grpcp2platency.WithClientConn(mockClient))
-// 		require.NoError(t, err)
+		err := client.Poll(ctx)
+		require.Error(t, err)
+	})
 
-// 		resp := &pollpb.PollResponse{}
-// 		resp.SetJitter(durationpb.New(jitter))
+	t.Run("returns error on missing response jitter", func(t *testing.T) {
+		t.Parallel()
 
-// 		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(resp, nil).Times(1)
-// 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Times(2)
+		ctx := t.Context()
 
-// 		err = client.Poll(ctx)
-// 		require.Error(t, err)
-// 	})
+		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockSentPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockLostPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockPingHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		mockUpstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		client := grpcptp.Client{
+			ID:                      "test",
+			Address:                 addr,
+			SentPacketsCounter:      mockSentPacketsCounter,
+			LostPacketsCounter:      mockLostPacketsCounter,
+			PingHistogram:           mockPingHistogram,
+			UpstreamJitterHistogram: mockUpstreamJitterHistogram,
+			Conn:                    mockClient,
+			Timeout:                 25 * time.Millisecond,
+		}
+		resp := pollpb.PollResponse_builder{Id: new("server")}.Build()
 
-// 	t.Run("returns error on missing response jitter", func(t *testing.T) {
-// 		t.Parallel()
+		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), int64(1), gomock.Any()).Times(1)
+		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(resp, nil).Times(1)
+		mockPingHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
-// 		ctx := t.Context()
-// 		mockClient := NewMockClientPoller(gomock.NewController(t))
-// 		mockRecorder := NewMockRecorder(gomock.NewController(t))
+		err := client.Poll(ctx)
+		require.Error(t, err)
+	})
+}
 
-// 		client, err := grpcp2platency.NewClient(addr, mockRecorder, grpcp2platency.WithClientConn(mockClient))
-// 		require.NoError(t, err)
+func TestClient_Start(t *testing.T) {
+	t.Parallel()
 
-// 		resp := &pollpb.PollResponse{}
-// 		resp.SetId("server")
+	t.Run("successful start", func(t *testing.T) {
+		t.Parallel()
 
-// 		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(resp, nil).Times(1)
-// 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Times(2)
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
 
-// 		err = client.Poll(ctx)
-// 		require.Error(t, err)
-// 	})
-// }
+		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockSentPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockLostPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockPingHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		mockUpstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		client := grpcptp.Client{
+			ID:                      "test",
+			Address:                 "localhost:12345",
+			SentPacketsCounter:      mockSentPacketsCounter,
+			LostPacketsCounter:      mockLostPacketsCounter,
+			PingHistogram:           mockPingHistogram,
+			UpstreamJitterHistogram: mockUpstreamJitterHistogram,
+			Conn:                    mockClient,
+		}
 
-// func TestServer_Poll(t *testing.T) {
-// 	t.Parallel()
+		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+		mockPingHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		mockUpstreamJitterHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
-// 	addr := "localhost:12345"
+		go func() {
+			err := client.Start(ctx)
+			require.Error(t, err)
+			require.Equal(t, context.Canceled.Error(), err.Error())
+		}()
 
-// 	t.Run("successful poll", func(t *testing.T) {
-// 		t.Parallel()
+		cancel()
+	})
 
-// 		ctx := t.Context()
-// 		start := time.Now()
-// 		clientID, serverID := "client", "server"
-// 		mockRecorder := NewMockRecorder(gomock.NewController(t))
+	t.Run("returns error on empty id", func(t *testing.T) {
+		t.Parallel()
 
-// 		server, err := grpcp2platency.NewServer(addr, mockRecorder, grpcp2platency.WithServerID(serverID))
-// 		require.NoError(t, err)
+		ctx := t.Context()
 
-// 		req := &pollpb.PollRequest{}
-// 		req.SetId(clientID)
-// 		req.SetTimestamp(timestamppb.New(start))
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
 
-// 		jitter := time.Duration(0)
-// 		mockRecorder.EXPECT().Record(gomock.Any(), gomock.Any()).Do(func(ctx context.Context, sample recorder.Sample) {
-// 			require.Equal(t, recorder.SampleTypeDownstreamJitter, sample.Type)
-// 			v, ok := sample.Val.(time.Duration)
-// 			require.True(t, ok)
-// 			require.NotZero(t, v)
-// 			jitter = v
-// 		}).Times(1)
+		client := grpcptp.Client{
+			ID:                      "",
+			Address:                 net.JoinHostPort("", strconv.Itoa(port)),
+			SentPacketsCounter:      NewMockInt64Counter(gomock.NewController(t)),
+			LostPacketsCounter:      NewMockInt64Counter(gomock.NewController(t)),
+			PingHistogram:           NewMockFloat64Histogram(gomock.NewController(t)),
+			UpstreamJitterHistogram: NewMockFloat64Histogram(gomock.NewController(t)),
+		}
 
-// 		res, err := server.Poll(ctx, req)
-// 		require.NoError(t, err)
-// 		require.Equal(t, serverID, res.GetId())
-// 		require.Nil(t, res.GetJitter()) // no jitter on the first poll.
+		err = client.Start(ctx)
+		require.Error(t, err)
+	})
 
-// 		time.Sleep(5 * time.Millisecond)
+	t.Run("returns error on empty address", func(t *testing.T) {
+		t.Parallel()
 
-// 		res, err = server.Poll(ctx, req)
-// 		require.NoError(t, err)
-// 		require.Equal(t, serverID, res.GetId())
-// 		require.NotNil(t, res.GetJitter())
-// 		require.Equal(t, jitter, res.GetJitter().AsDuration())
-// 	})
+		ctx := t.Context()
 
-// 	t.Run("return error when id is missing", func(t *testing.T) {
-// 		t.Parallel()
+		client := grpcptp.Client{
+			ID:                      "test",
+			Address:                 "",
+			SentPacketsCounter:      NewMockInt64Counter(gomock.NewController(t)),
+			LostPacketsCounter:      NewMockInt64Counter(gomock.NewController(t)),
+			PingHistogram:           NewMockFloat64Histogram(gomock.NewController(t)),
+			UpstreamJitterHistogram: NewMockFloat64Histogram(gomock.NewController(t)),
+		}
 
-// 		ctx := t.Context()
-// 		start := time.Now()
-// 		mockRecorder := NewMockRecorder(gomock.NewController(t))
+		err := client.Start(ctx)
+		require.Error(t, err)
+	})
+}
 
-// 		server, err := grpcp2platency.NewServer(addr, mockRecorder)
-// 		require.NoError(t, err)
+func TestServer_Poll(t *testing.T) {
+	t.Parallel()
 
-// 		req := &pollpb.PollRequest{}
-// 		req.SetTimestamp(timestamppb.New(start))
+	addr := "localhost:12345"
 
-// 		_, err = server.Poll(ctx, req)
-// 		require.Error(t, err)
-// 	})
+	t.Run("successful poll", func(t *testing.T) {
+		t.Parallel()
 
-// 	t.Run("return error when timestamp is missing", func(t *testing.T) {
-// 		t.Parallel()
+		ctx := t.Context()
 
-// 		ctx := t.Context()
-// 		mockRecorder := NewMockRecorder(gomock.NewController(t))
+		jitter := float64(0)
+		start := time.Now()
+		clientID, serverID := "client", "server"
+		mockDownstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		server := grpcptp.Server{
+			ID:                        serverID,
+			Address:                   addr,
+			DownstreamJitterHistogram: mockDownstreamJitterHistogram,
+		}
+		req := pollpb.PollRequest_builder{
+			Id:        &clientID,
+			Timestamp: timestamppb.New(start),
+		}.Build()
 
-// 		server, err := grpcp2platency.NewServer(addr, mockRecorder)
-// 		require.NoError(t, err)
+		mockDownstreamJitterHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(ctx context.Context, val float64, opts ...metric.RecordOption) {
+			require.Less(t, val, time.Since(start).Seconds())
+			require.NotZero(t, val)
+			jitter = val
+		}).Times(1)
 
-// 		req := &pollpb.PollRequest{}
-// 		req.SetId("client")
+		res, err := server.Poll(ctx, req)
+		require.NoError(t, err)
+		require.Equal(t, serverID, res.GetId())
+		require.Nil(t, res.GetJitter()) // no jitter on the first poll.
 
-// 		_, err = server.Poll(ctx, req)
-// 		require.Error(t, err)
-// 	})
-// }
+		time.Sleep(5 * time.Millisecond)
+
+		res, err = server.Poll(ctx, req)
+		require.NoError(t, err)
+		require.Equal(t, serverID, res.GetId())
+		require.NotNil(t, res.GetJitter())
+		require.Equal(t, jitter, res.GetJitter().AsDuration().Seconds())
+	})
+
+	t.Run("return error when id is missing", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		start := time.Now()
+		mockDownstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		server := grpcptp.Server{
+			ID:                        "server",
+			Address:                   addr,
+			DownstreamJitterHistogram: mockDownstreamJitterHistogram,
+		}
+
+		req := pollpb.PollRequest_builder{Timestamp: timestamppb.New(start)}.Build()
+
+		_, err := server.Poll(ctx, req)
+		require.Error(t, err)
+	})
+
+	t.Run("return error when timestamp is missing", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		mockDownstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		server := grpcptp.Server{
+			ID:                        "server",
+			Address:                   addr,
+			DownstreamJitterHistogram: mockDownstreamJitterHistogram,
+		}
+
+		req := pollpb.PollRequest_builder{Id: new("client")}.Build()
+
+		_, err := server.Poll(ctx, req)
+		require.Error(t, err)
+	})
+}
+
+func TestServer_Start(t *testing.T) {
+	t.Parallel()
+
+	t.Run("successful start", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		mockDownstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		server := grpcptp.Server{
+			ID:                        "server",
+			Address:                   "localhost:12345",
+			DownstreamJitterHistogram: mockDownstreamJitterHistogram,
+		}
+
+		mockDownstreamJitterHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+		go func() {
+			err := server.Start(ctx)
+			require.Error(t, err)
+			require.Equal(t, context.Canceled.Error(), err.Error())
+		}()
+
+		cancel()
+	})
+
+	t.Run("returns error on empty id", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		server := grpcptp.Server{
+			ID:                        "",
+			Address:                   "localhost:12345",
+			DownstreamJitterHistogram: NewMockFloat64Histogram(gomock.NewController(t)),
+		}
+
+		err := server.Start(ctx)
+		require.Error(t, err)
+	})
+
+	t.Run("returns error on empty address", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		server := grpcptp.Server{
+			ID:                        "server",
+			Address:                   "",
+			DownstreamJitterHistogram: NewMockFloat64Histogram(gomock.NewController(t)),
+		}
+
+		err := server.Start(ctx)
+		require.Error(t, err)
+	})
+}

@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 
 	pollpb "github.com/wafer-bw/jittermon/internal/gen/go/poll/v1"
@@ -26,130 +25,73 @@ type ClientPoller interface {
 	pollpb.PollServiceClient
 }
 
+type Int64Counter interface {
+	Add(ctx context.Context, incr int64, options ...metric.AddOption)
+}
+
+type Float64Histogram interface {
+	Record(ctx context.Context, incr float64, options ...metric.RecordOption)
+}
+
 const (
 	name                     string        = "grpc ptp client"
 	defaultInterval          time.Duration = 1 * time.Second
-	defaultTimeout           time.Duration = defaultInterval * time.Duration(2)
+	defaultMaxConnectionIdle time.Duration = 5 * time.Minute
 	defaultProto             string        = "tcp"
-	defaultReflectionEnabled bool          = true
-	defaultPollGrace         int           = 1
-	maxConnectionIdle        time.Duration = 5 * time.Minute
+	startingPollGrace        int           = 1
 )
 
-var (
-	defaultLog           = slog.New(slog.DiscardHandler)
-	defaultServerOptions = []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: maxConnectionIdle})}
-	defaultDialOptions   = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-)
-
-type ClientOption func(*Client) error
-
-func WithClientInterval(interval time.Duration) ClientOption {
-	return func(c *Client) error {
-		if interval <= 0 {
-			return nil
-		}
-		c.interval = interval
-		return nil
-	}
-}
-
-func WithClientTimeout(timeout time.Duration) ClientOption {
-	return func(c *Client) error {
-		if timeout <= 0 {
-			return nil
-		}
-		c.timeout = timeout
-		return nil
-	}
-}
-
-func WithClientLog(log *slog.Logger) ClientOption {
-	return func(c *Client) error {
-		if log == nil {
-			return nil
-		}
-		c.log = log
-		return nil
-	}
-}
-
-func WithClientDialOptions(opts ...grpc.DialOption) ClientOption {
-	return func(c *Client) error {
-		c.dialOptions = opts
-		return nil
-	}
-}
+var defaultLog = slog.New(slog.DiscardHandler)
 
 type Client struct {
-	id          string
-	address     string
-	interval    time.Duration
-	timeout     time.Duration
-	dialOptions []grpc.DialOption
-	log         *slog.Logger
-	attributes  []attribute.KeyValue
-	conn        ClientPoller
-	pollGrace   int
-}
+	ID                      string
+	Address                 string
+	SentPacketsCounter      Int64Counter
+	LostPacketsCounter      Int64Counter
+	PingHistogram           Float64Histogram
+	UpstreamJitterHistogram Float64Histogram
 
-func NewClient(id string, address string, options ...ClientOption) (*Client, error) {
-	if id == "" {
-		return nil, fmt.Errorf("id cannot be empty")
-	} else if address == "" {
-		return nil, fmt.Errorf("address cannot be empty")
-	}
+	Interval    time.Duration
+	Timeout     time.Duration
+	DialOptions []grpc.DialOption
+	Log         *slog.Logger
+	Conn        ClientPoller
 
-	c := &Client{
-		id:          id,
-		address:     address,
-		interval:    defaultInterval,
-		timeout:     defaultTimeout,
-		dialOptions: defaultDialOptions,
-		log:         defaultLog,
-		pollGrace:   defaultPollGrace,
-	}
-
-	for _, option := range options {
-		if err := option(c); err != nil {
-			return nil, fmt.Errorf("apply option: %w", err)
-		}
-	}
-
-	c.attributes = []attribute.KeyValue{}
-
-	return c, nil
+	pollGrace int
 }
 
 func (c Client) Poll(ctx context.Context) error {
 	attributes := metric.WithAttributes(
-		attribute.String(otel.SourceLabelName, c.id),
-		attribute.String(otel.DestinationLabelName, c.address),
+		attribute.String(otel.SourceLabelName, c.ID),
+		attribute.String(otel.DestinationLabelName, c.Address),
 	)
 
 	start := time.Now()
+	if c.Log == nil {
+		c.Log = defaultLog
+	}
 
 	req := pollpb.PollRequest_builder{
-		Id:        &c.id,
+		Id:        &c.ID,
 		Timestamp: timestamppb.New(start),
 	}.Build()
 
-	pCtx, cancel := context.WithTimeout(ctx, c.timeout) // TODO: determine what to set this to, too early and we report non-lost packets.
+	pCtx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 
-	otel.SentPacketsCounter.Add(ctx, 1, attributes)
-	c.log.DebugContext(ctx, otel.SentPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.id, otel.DestinationLabelName, c.address)
-	rsp, err := c.conn.Poll(pCtx, req)
+	c.SentPacketsCounter.Add(ctx, 1, attributes)
+	c.Log.DebugContext(ctx, otel.SentPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
+	rsp, err := c.Conn.Poll(pCtx, req)
 	if err != nil {
-		otel.LostPacketsCounter.Add(ctx, 1, attributes)
-		c.log.DebugContext(ctx, otel.LostPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.id, otel.DestinationLabelName, c.address)
+		c.LostPacketsCounter.Add(ctx, 1, attributes)
+		c.Log.DebugContext(ctx, otel.LostPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
 		return err
 	}
 
 	end := time.Now()
 	rtt := end.Sub(start)
-	otel.PingHistogram.Record(ctx, rtt.Seconds(), attributes)
-	c.log.DebugContext(ctx, otel.PingMetricName, "value", strconv.FormatFloat(rtt.Seconds(), 'f', 6, 64), otel.SourceLabelName, c.id, otel.DestinationLabelName, c.address)
+	c.PingHistogram.Record(ctx, rtt.Seconds(), attributes)
+	c.Log.DebugContext(ctx, otel.PingMetricName, "value", strconv.FormatFloat(rtt.Seconds(), 'f', 6, 64), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
 
 	dstID := rsp.GetId()
 	if dstID == "" {
@@ -160,25 +102,44 @@ func (c Client) Poll(ctx context.Context) error {
 		return fmt.Errorf("no jitter in response")
 	}
 	jit := jitterPb.AsDuration()
-	otel.UpstreamJitterHistogram.Record(ctx, jit.Seconds(), attributes)
-	c.log.DebugContext(ctx, otel.UpstreamJitterMetricName, "value", strconv.FormatFloat(jit.Seconds(), 'f', 6, 64), otel.SourceLabelName, c.id, otel.DestinationLabelName, c.address)
+	c.UpstreamJitterHistogram.Record(ctx, jit.Seconds(), attributes)
+	c.Log.DebugContext(ctx, otel.UpstreamJitterMetricName, "value", strconv.FormatFloat(jit.Seconds(), 'f', 6, 64), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
 
 	return nil
 }
 
 func (c *Client) Start(ctx context.Context) error {
-	ticker := time.NewTicker(c.interval)
+	if c.ID == "" {
+		return fmt.Errorf("%s client start: id cannot be empty", name)
+	} else if c.Address == "" {
+		return fmt.Errorf("%s client start: address cannot be empty", name)
+	} else if c.Interval <= 0 {
+		c.Interval = defaultInterval
+	}
+
+	if c.Timeout <= 0 {
+		c.Timeout = c.Interval
+	}
+	if c.Log == nil {
+		c.Log = defaultLog
+	}
+	if len(c.DialOptions) == 0 {
+		c.DialOptions = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	}
+	c.pollGrace = startingPollGrace
+
+	ticker := time.NewTicker(c.Interval)
 	defer ticker.Stop()
 
-	c.log.InfoContext(ctx, "starting", "name", name, "address", c.address, "interval", c.interval)
+	c.Log.InfoContext(ctx, "starting", "name", name, "address", c.Address, "interval", c.Interval)
 
-	if c.conn == nil { // can exist already in tests.
-		conn, err := grpc.NewClient(c.address, c.dialOptions...)
+	if c.Conn == nil {
+		conn, err := grpc.NewClient(c.Address, c.DialOptions...)
 		if err != nil {
 			return err
 		}
 		defer conn.Close()
-		c.conn = pollpb.NewPollServiceClient(conn)
+		c.Conn = pollpb.NewPollServiceClient(conn)
 	}
 
 	for {
@@ -188,112 +149,42 @@ func (c *Client) Start(ctx context.Context) error {
 				if c.pollGrace > 0 {
 					c.pollGrace--
 				} else {
-					c.log.ErrorContext(ctx, "poll failed", "name", name, "err", err)
+					c.Log.ErrorContext(ctx, "poll failed", "name", name, "err", err)
 				}
 				continue
 			}
 		case <-ctx.Done():
-			c.log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
+			c.Log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
 			return ctx.Err()
 		}
 	}
 }
 
-// TODO: implement.
-func (c *Client) Stop(ctx context.Context) error {
-	return nil
-}
-
-type ServerOption func(*Server) error
-
-func WithServerID(id string) ServerOption {
-	return func(s *Server) error {
-		id = strings.TrimSpace(id)
-		if id == "" {
-			return nil
-		}
-		s.id = id
-		return nil
-	}
-}
-
-func WithServerProto(proto string) ServerOption {
-	return func(s *Server) error {
-		if proto == "" {
-			return nil
-		}
-		s.proto = proto
-		return nil
-	}
-}
-
-func WithServerOptions(opts ...grpc.ServerOption) ServerOption {
-	return func(s *Server) error {
-		s.serverOptions = opts
-		return nil
-	}
-}
-
-func WithServerReflection(enabled bool) ServerOption {
-	return func(s *Server) error {
-		s.reflectionEnabled = enabled
-		return nil
-	}
-}
-
-func WithServerLog(log *slog.Logger) ServerOption {
-	return func(s *Server) error {
-		if log == nil {
-			return nil
-		}
-		s.log = log
-		return nil
-	}
-}
-
 type Server struct {
-	id                string
-	address           string
-	proto             string
-	serverOptions     []grpc.ServerOption
-	reflectionEnabled bool
-	jitter            *jitter.Buffer
-	log               *slog.Logger
-	server            *grpc.Server
+	ID                        string
+	Address                   string
+	DownstreamJitterHistogram Float64Histogram
+
+	Proto         string
+	ServerOptions []grpc.ServerOption
+	Log           *slog.Logger
+	Server        *grpc.Server
+
+	jitter *jitter.Buffer
 
 	pollpb.UnimplementedPollServiceServer
 }
 
-func NewServer(id string, address string, options ...ServerOption) (*Server, error) {
-	if id == "" {
-		return nil, fmt.Errorf("id cannot be empty")
-	} else if address == "" {
-		return nil, fmt.Errorf("address cannot be empty")
-	}
-
-	s := &Server{
-		id:                id,
-		address:           address,
-		jitter:            &jitter.Buffer{},
-		proto:             defaultProto,
-		serverOptions:     defaultServerOptions,
-		reflectionEnabled: defaultReflectionEnabled,
-		log:               defaultLog,
-	}
-
-	for _, option := range options {
-		if err := option(s); err != nil {
-			return nil, fmt.Errorf("apply option: %w", err)
-		}
-	}
-
-	return s, nil
-}
-
-func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
+func (s *Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.PollResponse, error) {
 	start := time.Now()
+	if s.jitter == nil {
+		s.jitter = &jitter.Buffer{}
+	}
+	if s.Log == nil {
+		s.Log = defaultLog
+	}
 
-	resp := pollpb.PollResponse_builder{Id: &s.id}.Build()
+	resp := pollpb.PollResponse_builder{Id: &s.ID}.Build()
 
 	srcID := req.GetId()
 	if srcID == "" {
@@ -302,7 +193,7 @@ func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.Poll
 
 	attributes := metric.WithAttributes(
 		attribute.String(otel.SourceLabelName, srcID),
-		attribute.String(otel.DestinationLabelName, s.id),
+		attribute.String(otel.DestinationLabelName, s.ID),
 	)
 
 	sentAtPb := req.GetTimestamp()
@@ -317,23 +208,40 @@ func (s Server) Poll(ctx context.Context, req *pollpb.PollRequest) (*pollpb.Poll
 	}
 	resp.SetJitter(durationpb.New(jitter))
 
-	otel.DownstreamJitterHistogram.Record(ctx, jitter.Seconds(), attributes)
-	s.log.DebugContext(ctx, otel.DownstreamJitterMetricName, "value", strconv.FormatFloat(jitter.Seconds(), 'f', 6, 64), otel.SourceLabelName, srcID, otel.DestinationLabelName, s.id)
+	s.DownstreamJitterHistogram.Record(ctx, jitter.Seconds(), attributes)
+	s.Log.DebugContext(ctx, otel.DownstreamJitterMetricName, "value", strconv.FormatFloat(jitter.Seconds(), 'f', 6, 64), otel.SourceLabelName, srcID, otel.DestinationLabelName, s.ID)
 
 	return resp, nil
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	s.log.InfoContext(ctx, "starting", "name", name, "address", s.address)
-
-	s.server = grpc.NewServer(s.serverOptions...)
-	pollpb.RegisterPollServiceServer(s.server, s)
-	if s.reflectionEnabled {
-		reflection.Register(s.server)
+	if s.ID == "" {
+		return fmt.Errorf("%s client start: id cannot be empty", name)
+	} else if s.Address == "" {
+		return fmt.Errorf("%s client start: address cannot be empty", name)
 	}
-	defer s.server.Stop()
 
-	listener, err := net.Listen(s.proto, s.address)
+	if s.Log == nil {
+		s.Log = defaultLog
+	}
+	if len(s.ServerOptions) == 0 {
+		s.ServerOptions = []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionIdle: defaultMaxConnectionIdle})}
+	}
+	if s.Proto == "" {
+		s.Proto = defaultProto
+	}
+	s.jitter = &jitter.Buffer{}
+
+	s.Log.InfoContext(ctx, "starting", "name", name, "address", s.Address)
+
+	if s.Server == nil {
+		s.Server = grpc.NewServer(s.ServerOptions...)
+		pollpb.RegisterPollServiceServer(s.Server, s)
+		reflection.Register(s.Server)
+		defer s.Server.Stop()
+	}
+
+	listener, err := net.Listen(s.Proto, s.Address)
 	if err != nil {
 		return err
 	}
@@ -341,7 +249,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	errCh := make(chan error)
 	go func() {
-		if err := s.server.Serve(listener); err != nil {
+		if err := s.Server.Serve(listener); err != nil {
 			errCh <- err
 		}
 		close(errCh)
@@ -349,15 +257,10 @@ func (s *Server) Start(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		s.log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
+		s.Log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
 		return ctx.Err()
 	case err := <-errCh:
-		s.log.ErrorContext(ctx, "server failed", "name", name, "err", err)
+		s.Log.ErrorContext(ctx, "server failed", "name", name, "err", err)
 		return err
 	}
-}
-
-// TODO: implement.
-func (c *Server) Stop(ctx context.Context) error {
-	return nil
 }
