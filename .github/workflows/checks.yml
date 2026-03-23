@@ -112,8 +112,8 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
-      - name: Run linting
-        uses: golangci/golangci-lint-action@v6
+      - name: Run Go linting
+        uses: golangci/golangci-lint-action@v8
         with:
           version: latest
       - name: Set up buf

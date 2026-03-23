@@ -45,8 +45,6 @@ docker compose down
 
 ## TODOs
 - handle src/dst id/address confusion.
-- back off send rate when failing.
 - handle timeouts that take longer than interval to avoid misreporting packet
   loss.
 - at least one alternative to fly.io for running remote peer.
-- resolve TODOs in code.
