@@ -43,17 +43,14 @@ Docker.
 </details>
 
 ## Getting Started
-Requirements:
-- [Docker](https://www.docker.com/get-started/)
-- [Docker Compose](https://docs.docker.com/compose/)
-
-To make it easy to run everything at once the primary way of running Jittermon
-is through `docker compose` backed by [this](./docker-compose.yml) docker
-compose file and an optional `.env` file.
-
-Follow either the [Standalone](#standalone) (simple, free) or
-[With Remote Peer](#with-remote-peer) (advanced, may incur costs) sections below
-to get started.
+1. Clone the repo or download and extract the source code from the latest
+   version [here](https://github.com/wafer-bw/jittermon/releases).
+2. Ensure you have the following requirements installed:
+  - [Docker](https://www.docker.com/get-started/)
+  - [Docker Compose](https://docs.docker.com/compose/)
+3.  Follow either the [Standalone](#standalone) (simple, free) or
+    [With Remote Peer](#with-remote-peer) (advanced, may incur costs) sections below
+    to get started.
 
 ### Standalone
 1. Build docker image.
@@ -62,10 +59,10 @@ to get started.
     ```
 2. Run the app.
     ```sh
-    docker compose up -d        # start app
+    docker compose up -d
     ```
 3. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b
-   (use username `admin` and password `demo` to log in).
+   (username: `admin`, password: `demo`).
 4. Stop the app.
     ```sh
     docker compose down
@@ -91,36 +88,39 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
     # ? Create .dockerignore from 1 .gitignore files?
     #   No
     # ? Would you like to allocate dedicated ipv4 and ipv6 addresses now?
-    #   No
+    #   Yes
     ```
 3. Scale the deployment down to one machine. We don't need or want multiple.
     ```sh
     fly scale count 1
     ```
-4. Allocate a dedicated IPv4 address (remember the IP this creates for later).
-    ```sh
-    fly ips allocate-v4
-    ```
-5. Set the remote peer's send address to your IP address (make sure you've port
+4. Set the remote peer's send address to your IP address (make sure you've port
    forwarded, and replace `YOURIPHERE` with your public IPv4 address).
     ```sh
     fly secrets set JITTERMON_PTP_SEND_ADDRS=YOURIPHERE:8081
     ```
-6. Save the IP address of your fly app (from step 4 above) to `.env`.
+5. Save the IP address of your fly app from step 2 above to `.env` (replace
+   `FLYADDRESS` with the actual IPv4 address).
     ```sh
     echo JITTERMON_PTP_SEND_ADDRS=FLYADDRESS:8080 > .env
     ```
-7. Build docker image.
+6. Build docker image.
     ```sh
     docker build -t jittermon .
     ```
-8. Run the app.
+7. Run the app.
     ```sh
     docker compose up -d
     ```
-9. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b
+8. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b
    (use username `admin` and password `demo` to log in).
-10. Stop the app.
+9. Stop the app.
     ```sh
     docker compose down
     ```
+
+## TODOs
+- Better example screenshot that isn't downscaled but still renders okay in
+  GitHub.
+- Follow standalone getting started on windows.
+- Have non-technical user try to follow standalone getting started.
