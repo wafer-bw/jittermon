@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for jittermon on 2026-03-22T12:08:47-04:00
+# fly.toml app configuration file generated for jittermon on 2026-03-29T18:50:17-04:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -13,9 +13,9 @@ kill_timeout = '1m0s'
 
 [env]
   JITTERMON_ID = 'flyio-peer'
+  JITTERMON_LOG_LEVEL = 'INFO'
   JITTERMON_PTP_INTERVAL = '1s'
   JITTERMON_PTP_LISTEN_ADDR = ':8080'
-  JITTERMON_LOG_LEVEL = 'INFO'
 
 [[services]]
   protocol = 'tcp'
