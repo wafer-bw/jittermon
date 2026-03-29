@@ -124,6 +124,3 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
     ```sh
     docker compose down
     ```
-
-## TODOs
-- test standalone instructions to make sure it works (while .env file is deleted).
