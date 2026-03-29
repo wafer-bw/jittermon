@@ -29,7 +29,8 @@ services:
       JITTERMON_HTTP_WRITE_TIMEOUT: 1s
       JITTERMON_HTTP_IDLE_TIMEOUT: 15s
     env_file:
-      - .env
+      - path: .env
+        required: false
 
   grafana:
     image: grafana/grafana:11.6.0
@@ -43,7 +44,7 @@ services:
       - ./app/grafana/provisioning:/etc/grafana/provisioning
       - ./app/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
-      - GF_SECURITY_ADMIN_USER=demo
+      - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=demo
 
   prometheus:

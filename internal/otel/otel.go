@@ -14,20 +14,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
 const (
-	sampleRatio         float64 = 1.0
-	instrumentationName string  = "github.com/wafer-bw/jittermon/internal/otel"
+	instrumentationName string = "github.com/wafer-bw/jittermon/internal/otel"
 
 	SentPacketsMetricName      string = "sent.packets"
 	LostPacketsMetricName      string = "lost.packets"
@@ -66,7 +61,6 @@ type otelConfig struct {
 	serviceName       string
 	serviceVersion    string
 	serviceInstanceID string
-	sampleRatio       float64
 }
 
 func init() {
@@ -130,10 +124,7 @@ func Setup(ctx context.Context, id string) (shutdown func(context.Context) error
 		return shutdown, errors.New("id cannot be empty")
 	}
 
-	cfg := otelConfig{
-		serviceInstanceID: id,
-		sampleRatio:       sampleRatio,
-	}
+	cfg := otelConfig{serviceInstanceID: id}
 
 	if buildInfo, ok := debug.ReadBuildInfo(); ok && buildInfo != nil {
 		serviceNameParts := strings.Split(buildInfo.Main.Path, "/")
@@ -156,7 +147,12 @@ func Setup(ctx context.Context, id string) (shutdown func(context.Context) error
 		semconv.ServiceVersion(cfg.serviceVersion),
 	)
 
-	var shutdownFuncs []func(context.Context) error
+	// Although only one is added, if you ever use traces or otel logs you will
+	// end up with multiple so this is left as a slice.
+	//
+	// See also:
+	// https://github.com/grafana/docker-otel-lgtm/blob/main/examples/go/otel.go
+	shutdownFuncs := make([]func(context.Context) error, 0, 1)
 	shutdown = func(ctx context.Context) error {
 		var errs error
 		for _, fn := range shutdownFuncs {
@@ -166,26 +162,6 @@ func Setup(ctx context.Context, id string) (shutdown func(context.Context) error
 		return errs
 	}
 
-	prop := propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	)
-	otel.SetTextMapPropagator(prop)
-
-	// trace
-	traceExporter, err := otlptrace.New(ctx, otlptracehttp.NewClient())
-	if err != nil {
-		return shutdown, errors.Join(err, shutdown(ctx))
-	}
-	tracerProvider := trace.NewTracerProvider(
-		trace.WithResource(resource),
-		trace.WithSampler(trace.ParentBased(trace.TraceIDRatioBased(cfg.sampleRatio))),
-		trace.WithBatcher(traceExporter),
-	)
-	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
-	otel.SetTracerProvider(tracerProvider)
-
-	// meter
 	meterExporter, err := prometheus.New()
 	if err != nil {
 		return shutdown, errors.Join(err, shutdown(ctx))
