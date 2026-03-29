@@ -67,7 +67,6 @@ func TestRun(t *testing.T) {
 			errCh <- run(ctx, log, cfg)
 		}()
 
-		// Wait for metrics server to be ready.
 		require.Eventually(t, func() bool {
 			resp, err := http.Get("http://localhost:" + strconv.Itoa(metricsPort) + "/metrics")
 			if err != nil {
@@ -77,7 +76,7 @@ func TestRun(t *testing.T) {
 			return resp.StatusCode == http.StatusOK
 		}, 1*time.Second, 50*time.Millisecond)
 
-		cancel()
+		cancel() // cause shutdown by cancelling context.
 
 		select {
 		case err := <-errCh:
