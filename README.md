@@ -20,6 +20,7 @@ technical details.
 
 <details>
 <summary>Background Story (click to expand)</summary>
+
 A year ago I was experiencing strange internet issues that were hard to identify
 in a meaningful way to my ISP. The best information I had was that I was seeing
 elevated packet loss, ping, & jitter, and that during such events on a VoIP call
