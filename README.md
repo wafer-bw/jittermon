@@ -62,7 +62,7 @@ Docker.
     ```sh
     docker compose up -d
     ```
-3. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b
+3. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b \
    (username: `admin`, password: `demo`).
 4. Stop the app.
     ```sh
@@ -113,8 +113,8 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
     ```sh
     docker compose up -d
     ```
-8. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b
-   (use username `admin` and password `demo` to log in).
+8. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b \
+   (username: `admin`, password: `demo`).
 9. Stop the app.
     ```sh
     docker compose down
