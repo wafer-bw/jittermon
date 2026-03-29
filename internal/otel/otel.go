@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"runtime/debug"
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -46,6 +49,24 @@ var (
 	UpstreamJitterHistogram   metric.Float64Histogram
 	DownstreamJitterHistogram metric.Float64Histogram
 )
+
+type MetricsServerConfig struct {
+	Address        string        `envconfig:"ADDR" default:":8082"`
+	MaxHeaderBytes int           `envconfig:"MAX_HEADER_BYTES" default:"32000"` // 32KB
+	MaxBodyBytes   int64         `envconfig:"MAX_BODY_BYTES" default:"512000"`  // 512KB
+	HandlerTimeout time.Duration `envconfig:"HANDLER_TIMEOUT" default:"800ms"`
+	ReadTimeout    time.Duration `envconfig:"READ_TIMEOUT" default:"300ms"`
+	WriteTimeout   time.Duration `envconfig:"WRITE_TIMEOUT" default:"1s"`
+	IdleTimeout    time.Duration `envconfig:"IDLE_TIMEOUT" default:"15s"`
+	StoppingCh     chan struct{} `envconfig:"-"`
+}
+
+type otelConfig struct {
+	serviceName       string
+	serviceVersion    string
+	serviceInstanceID string
+	sampleRatio       float64
+}
 
 func init() {
 	var err error
@@ -101,13 +122,6 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("failed to create downstream jitter histogram: %v", err))
 	}
-}
-
-type otelConfig struct {
-	serviceName       string
-	serviceVersion    string
-	serviceInstanceID string
-	sampleRatio       float64
 }
 
 func Setup(ctx context.Context, id string) (shutdown func(context.Context) error, err error) {
@@ -187,4 +201,56 @@ func Setup(ctx context.Context, id string) (shutdown func(context.Context) error
 	}
 
 	return shutdown, nil
+}
+
+func StartMetricsServer(ctx context.Context, log *slog.Logger, cfg MetricsServerConfig) error {
+	name := "http server"
+
+	maxBytes := func(next http.Handler) http.Handler {
+		return http.MaxBytesHandler(next, cfg.MaxBodyBytes)
+	}
+	timeout := func(next http.Handler) http.Handler {
+		return http.TimeoutHandler(next, cfg.HandlerTimeout, "service timeout")
+	}
+
+	chain := []func(http.Handler) http.Handler{maxBytes, timeout}
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", promhttp.Handler())
+
+	s := &http.Server{
+		Addr:           cfg.Address,
+		MaxHeaderBytes: cfg.MaxHeaderBytes,
+		ReadTimeout:    cfg.ReadTimeout,
+		WriteTimeout:   cfg.WriteTimeout,
+		IdleTimeout:    cfg.IdleTimeout,
+		Handler:        use(mux, chain...),
+	}
+
+	log.InfoContext(ctx, "starting", "name", name, "address", cfg.Address)
+
+	errCh := make(chan error)
+	go func() {
+		if err := s.ListenAndServe(); err != nil {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
+		return ctx.Err()
+	case err := <-errCh:
+		log.ErrorContext(ctx, "server failed", "name", name, "err", err)
+		return err
+	}
+}
+
+// use wraps an [http.Handler] with the provided middlewares.
+func use(handler http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		handler = middlewares[i](handler)
+	}
+	return handler
 }

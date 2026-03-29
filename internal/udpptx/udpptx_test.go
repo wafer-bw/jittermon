@@ -3,7 +3,9 @@ package udpptx_test
 //go:generate go run go.uber.org/mock/mockgen -source=udpptx.go -destination=udpptx_mocks_test.go -package=udpptx_test
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"net"
 	"strconv"
 	"testing"
@@ -179,16 +181,93 @@ func TestClient_Start(t *testing.T) {
 
 		<-readyCh
 
-		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), int64(1), gomock.Any()).AnyTimes()
-		mockPingHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-		mockJitterHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), int64(1), gomock.Any()).Times(2)
+		mockPingHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+		mockJitterHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, _ float64, _ ...metric.RecordOption) {
+			cancel()
+		}).Times(1)
 
-		go func() {
-			err := client.Start(ctx)
-			require.Error(t, err)
-			require.Equal(t, context.Canceled.Error(), err.Error())
-		}()
+		err = client.Start(ctx)
+		require.Error(t, err)
+		require.Equal(t, context.Canceled.Error(), err.Error())
+	})
 
-		cancel()
+	t.Run("logs poll errors", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		var buf bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+		mockSentPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockLostPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockPingHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		mockJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
+		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+		client := udpptx.Client{
+			ID:                 "id",
+			Address:            addr,
+			Log:                logger,
+			SentPacketsCounter: mockSentPacketsCounter,
+			LostPacketsCounter: mockLostPacketsCounter,
+			PingHistogram:      mockPingHistogram,
+			JitterHistogram:    mockJitterHistogram,
+		}
+
+		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+		gomock.InOrder(
+			mockLostPacketsCounter.EXPECT().Add(gomock.Any(), gomock.Any(), gomock.Any()),
+			mockLostPacketsCounter.EXPECT().Add(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, _ int64, _ ...metric.AddOption) {
+				cancel()
+			}),
+		)
+
+		err = client.Start(ctx)
+		require.Error(t, err)
+		require.Equal(t, context.Canceled.Error(), err.Error())
+		require.Contains(t, buf.String(), "poll failed")
+	})
+
+	t.Run("returns error on empty id", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
+
+		client := udpptx.Client{
+			ID:                 "",
+			Address:            net.JoinHostPort("", strconv.Itoa(port)),
+			SentPacketsCounter: NewMockInt64Counter(gomock.NewController(t)),
+			LostPacketsCounter: NewMockInt64Counter(gomock.NewController(t)),
+			PingHistogram:      NewMockFloat64Histogram(gomock.NewController(t)),
+			JitterHistogram:    NewMockFloat64Histogram(gomock.NewController(t)),
+		}
+
+		err = client.Start(ctx)
+		require.Error(t, err)
+	})
+
+	t.Run("returns error on empty address", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+
+		client := udpptx.Client{
+			ID:                 "test",
+			Address:            "",
+			SentPacketsCounter: NewMockInt64Counter(gomock.NewController(t)),
+			LostPacketsCounter: NewMockInt64Counter(gomock.NewController(t)),
+			PingHistogram:      NewMockFloat64Histogram(gomock.NewController(t)),
+			JitterHistogram:    NewMockFloat64Histogram(gomock.NewController(t)),
+		}
+
+		err := client.Start(ctx)
+		require.Error(t, err)
 	})
 }

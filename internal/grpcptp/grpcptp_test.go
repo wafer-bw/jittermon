@@ -3,8 +3,10 @@ package grpcptp_test
 //go:generate go run go.uber.org/mock/mockgen -source=grpcptp.go -destination=grpcptp_mocks_test.go -package=grpcptp_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"strconv"
 	"testing"
@@ -16,6 +18,8 @@ import (
 	"github.com/wafer-bw/jittermon/internal/grpcptp"
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -164,6 +168,9 @@ func TestClient_Start(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
+		jitterDur := 5 * time.Millisecond
+		resp := pollpb.PollResponse_builder{Id: new("server"), Jitter: durationpb.New(jitterDur)}.Build()
+
 		mockClient := NewMockClientPoller(gomock.NewController(t))
 		mockSentPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
 		mockLostPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
@@ -172,6 +179,7 @@ func TestClient_Start(t *testing.T) {
 		client := grpcptp.Client{
 			ID:                      "test",
 			Address:                 "localhost:12345",
+			Interval:                10 * time.Millisecond,
 			SentPacketsCounter:      mockSentPacketsCounter,
 			LostPacketsCounter:      mockLostPacketsCounter,
 			PingHistogram:           mockPingHistogram,
@@ -179,18 +187,57 @@ func TestClient_Start(t *testing.T) {
 			Conn:                    mockClient,
 		}
 
-		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-		mockPingHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-		mockUpstreamJitterHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), int64(1), gomock.Any()).Times(1)
+		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(resp, nil).Times(1)
+		mockPingHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+		mockUpstreamJitterHistogram.EXPECT().Record(gomock.Any(), jitterDur.Seconds(), gomock.Any()).Do(func(_ context.Context, _ float64, _ ...metric.RecordOption) {
+			cancel() // stop client after ensuring we recorded jitter.
+		}).Times(1)
 
-		go func() {
-			err := client.Start(ctx)
-			require.Error(t, err)
-			require.Equal(t, context.Canceled.Error(), err.Error())
-		}()
+		err := client.Start(ctx)
+		require.Error(t, err)
+		require.Equal(t, context.Canceled.Error(), err.Error())
+	})
 
-		cancel()
+	t.Run("logs poll errors", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		var buf bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+		mockClient := NewMockClientPoller(gomock.NewController(t))
+		mockSentPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockLostPacketsCounter := NewMockInt64Counter(gomock.NewController(t))
+		mockPingHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		mockUpstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
+		client := grpcptp.Client{
+			ID:                      "test",
+			Address:                 "localhost:12345",
+			Interval:                10 * time.Millisecond,
+			Log:                     logger,
+			SentPacketsCounter:      mockSentPacketsCounter,
+			LostPacketsCounter:      mockLostPacketsCounter,
+			PingHistogram:           mockPingHistogram,
+			UpstreamJitterHistogram: mockUpstreamJitterHistogram,
+			Conn:                    mockClient,
+		}
+
+		mockSentPacketsCounter.EXPECT().Add(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+		mockClient.EXPECT().Poll(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("poll error")).Times(2)
+		gomock.InOrder(
+			mockLostPacketsCounter.EXPECT().Add(gomock.Any(), gomock.Any(), gomock.Any()),
+			mockLostPacketsCounter.EXPECT().Add(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, _ int64, _ ...metric.AddOption) {
+				cancel()
+			}),
+		)
+
+		err := client.Start(ctx)
+		require.Error(t, err)
+		require.Equal(t, context.Canceled.Error(), err.Error())
+		require.Contains(t, buf.String(), "poll failed")
 	})
 
 	t.Run("returns error on empty id", func(t *testing.T) {
@@ -324,22 +371,47 @@ func TestServer_Start(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
+		addr := net.JoinHostPort("localhost", strconv.Itoa(port))
+
 		mockDownstreamJitterHistogram := NewMockFloat64Histogram(gomock.NewController(t))
 		server := grpcptp.Server{
 			ID:                        "server",
-			Address:                   "localhost:12345",
+			Address:                   addr,
 			DownstreamJitterHistogram: mockDownstreamJitterHistogram,
 		}
 
-		mockDownstreamJitterHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		recordedCh := make(chan struct{})
+		mockDownstreamJitterHistogram.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, _ float64, _ ...metric.RecordOption) {
+			close(recordedCh)
+		}).Times(1)
 
+		errCh := make(chan error, 1)
 		go func() {
-			err := server.Start(ctx)
-			require.Error(t, err)
-			require.Equal(t, context.Canceled.Error(), err.Error())
+			errCh <- server.Start(ctx)
 		}()
 
+		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		require.NoError(t, err)
+		defer conn.Close()
+		client := pollpb.NewPollServiceClient(conn)
+
+		require.Eventually(t, func() bool {
+			req := pollpb.PollRequest_builder{Id: new("client"), Timestamp: timestamppb.New(time.Now())}.Build()
+			_, _ = client.Poll(t.Context(), req)
+			select {
+			case <-recordedCh:
+				return true
+			default:
+				return false
+			}
+		}, 1*time.Second, 10*time.Millisecond)
+
 		cancel()
+		err = <-errCh
+		require.Error(t, err)
+		require.Equal(t, context.Canceled.Error(), err.Error())
 	})
 
 	t.Run("returns error on empty id", func(t *testing.T) {

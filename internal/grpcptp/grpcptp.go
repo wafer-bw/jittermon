@@ -133,7 +133,7 @@ func (c *Client) Start(ctx context.Context) error {
 
 	c.Log.InfoContext(ctx, "starting", "name", name, "address", c.Address, "interval", c.Interval)
 
-	if c.Conn == nil {
+	if c.Conn == nil { // tests provide conn, normally we create one.
 		conn, err := grpc.NewClient(c.Address, c.DialOptions...)
 		if err != nil {
 			return err
