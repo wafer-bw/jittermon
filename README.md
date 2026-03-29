@@ -121,7 +121,5 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
     ```
 
 ## TODOs
-- Better example screenshot that isn't downscaled but still renders okay in
-  GitHub.
 - Follow standalone getting started on windows.
 - Have non-technical user try to follow standalone getting started.
