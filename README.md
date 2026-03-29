@@ -37,14 +37,9 @@ docker build -t jittermon .
 # start jittermon locally
 docker compose up -d
 # observe metrics at http://localhost:3000/d/aec2tnhcwbuo0b
+# login with username:demo password:demo
 ```
 ```sh
 # stop
 docker compose down
 ```
-
-## TODOs
-- handle src/dst id/address confusion.
-- handle timeouts that take longer than interval to avoid misreporting packet
-  loss.
-- at least one alternative to fly.io for running remote peer.
