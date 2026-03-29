@@ -205,7 +205,7 @@ func Setup(ctx context.Context, id string) (shutdown func(context.Context) error
 }
 
 func StartMetricsServer(ctx context.Context, log *slog.Logger, cfg MetricsServerConfig) error {
-	name := "http server"
+	name := "metrics server"
 
 	maxBytes := func(next http.Handler) http.Handler {
 		return http.MaxBytesHandler(next, cfg.MaxBodyBytes)
@@ -241,9 +241,9 @@ func StartMetricsServer(ctx context.Context, log *slog.Logger, cfg MetricsServer
 	select {
 	case <-ctx.Done():
 		log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
-		err := s.Shutdown(context.Background())
+		err := s.Shutdown(shutdownCtx)
 		return cmp.Or(err, ctx.Err())
 	case err := <-errCh:
 		log.ErrorContext(ctx, "server failed", "name", name, "err", err)
