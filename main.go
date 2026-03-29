@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"strings"
@@ -33,12 +34,6 @@ func main() {
 	envconfig.MustProcess("JITTERMON", &cfg)
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel}))
 
-	cfg.ID = strings.TrimSpace(cfg.ID)
-	if cfg.ID == "" {
-		log.Error("JITTERMON_ID environment variable is required")
-		os.Exit(1)
-	}
-
 	if err := run(ctx, log, cfg); err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
@@ -46,6 +41,11 @@ func main() {
 }
 
 func run(ctx context.Context, log *slog.Logger, cfg config) error {
+	cfg.ID = strings.TrimSpace(cfg.ID)
+	if cfg.ID == "" {
+		return errors.New("JITTERMON_ID environment variable is required")
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
