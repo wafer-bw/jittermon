@@ -18,7 +18,6 @@ import (
 )
 
 func TestSetup(t *testing.T) {
-
 	t.Run("returns shutdown function on success", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -39,8 +38,6 @@ func TestSetup(t *testing.T) {
 	})
 
 	t.Run("returns error when id is empty", func(t *testing.T) {
-		t.Parallel()
-
 		_, err := otel.Setup(t.Context(), "")
 		require.Error(t, err)
 		require.Equal(t, err.Error(), "id cannot be empty")

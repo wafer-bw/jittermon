@@ -60,7 +60,7 @@ type Client struct {
 	pollGrace int
 }
 
-func (c Client) Poll(ctx context.Context) error {
+func (c *Client) Poll(ctx context.Context) error {
 	attributes := metric.WithAttributes(
 		attribute.String(otel.SourceLabelName, c.ID),
 		attribute.String(otel.DestinationLabelName, c.Address),
@@ -247,7 +247,7 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	defer listener.Close()
 
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
 	go func() {
 		if err := s.Server.Serve(listener); err != nil {
 			errCh <- err

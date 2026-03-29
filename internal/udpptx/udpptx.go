@@ -66,7 +66,6 @@ func (c *Client) Poll(ctx context.Context) error {
 	c.SentPacketsCounter.Add(ctx, 1, attributes)
 	c.Log.DebugContext(ctx, otel.SentPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
 	if err := c.poll(ctx); err != nil {
-		fmt.Println(err)
 		c.LostPacketsCounter.Add(ctx, 1, attributes)
 		c.Log.DebugContext(ctx, otel.LostPacketsMetricName, "value", strconv.Itoa(1), otel.SourceLabelName, c.ID, otel.DestinationLabelName, c.Address)
 		return err

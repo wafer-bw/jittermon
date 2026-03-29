@@ -1,6 +1,7 @@
 package otel
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -229,7 +230,7 @@ func StartMetricsServer(ctx context.Context, log *slog.Logger, cfg MetricsServer
 
 	log.InfoContext(ctx, "starting", "name", name, "address", cfg.Address)
 
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
 	go func() {
 		if err := s.ListenAndServe(); err != nil {
 			errCh <- err
@@ -240,7 +241,10 @@ func StartMetricsServer(ctx context.Context, log *slog.Logger, cfg MetricsServer
 	select {
 	case <-ctx.Done():
 		log.WarnContext(ctx, "context done, stopping", "name", name, "err", ctx.Err())
-		return ctx.Err()
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		err := s.Shutdown(context.Background())
+		return cmp.Or(err, ctx.Err())
 	case err := <-errCh:
 		log.ErrorContext(ctx, "server failed", "name", name, "err", err)
 		return err
