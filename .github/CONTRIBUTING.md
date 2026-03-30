@@ -3,10 +3,11 @@ Brief contributing guide to help anyone looking to do more with Jittermon than
 is covered in the [README](../README.md).
 
 ## Requirements
-- [Go 1.26.1+](https://go.dev/doc/install)
-- [Docker](https://www.docker.com/get-started/)
-- [Docker Compose](https://docs.docker.com/compose/)
-- [Buf](https://buf.build/docs/cli/installation/)
+- [go](https://go.dev/doc/install)
+- [docker](https://www.docker.com/get-started/)
+- [docker compose](https://docs.docker.com/compose/)
+- [buf](https://buf.build/docs/cli/installation/)
+- [flyctl](https://fly.io/docs/flyctl/install/)
 
 ## Usage
 Aside from what's already described in the readme's [Getting Started](../README.md#getting-started)

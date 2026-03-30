@@ -47,11 +47,22 @@ Docker.
 1. Clone the repo or download and extract the source code from the latest
    version [here](https://github.com/wafer-bw/jittermon/releases).
 2. Ensure you have the following requirements installed:
-  - [Docker](https://www.docker.com/get-started/)
-  - [Docker Compose](https://docs.docker.com/compose/)
+  - [docker](https://www.docker.com/get-started/) (if you aren't sure how to
+    install use the Download Docker Desktop button)
+  - [docker compose](https://docs.docker.com/compose/) (if you installed docker
+    desktop above this will be included)
+  - [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
+    the advanced getting started guide below).
 3.  Follow either the [Standalone](#standalone) (simple, free) or
     [With Remote Peer](#with-remote-peer) (advanced, may incur costs) sections below
     to get started.
+
+> [!NOTE]
+> Attention Windows Users: After installing docker desktop above you'll likely
+> have to restart your machine. You may also have to run [`wsl --install`](https://learn.microsoft.com/en-us/windows/wsl/install)
+> or `wsl --update` in a command prompt window after restarting. For running the
+> commands below you'll need to open a command prompt window in the same folder
+> where you cloned or extracted the source code which is explained [here](https://superuser.com/a/1524862).
 
 ### Standalone
 1. Build docker image.
@@ -121,5 +132,4 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
     ```
 
 ## TODOs
-- Follow standalone getting started on windows.
 - Have non-technical user try to follow standalone getting started.
