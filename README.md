@@ -47,11 +47,11 @@ Docker.
 1. Clone the repo or download and extract the source code from the latest
    version [here](https://github.com/wafer-bw/jittermon/releases).
 2. Ensure you have the following requirements installed:
-  - [docker](https://www.docker.com/get-started/) (if you aren't sure how to
+    - [docker](https://www.docker.com/get-started/) (if you aren't sure how to
     install use the Download Docker Desktop button)
-  - [docker compose](https://docs.docker.com/compose/) (if you installed docker
+    - [docker compose](https://docs.docker.com/compose/) (if you installed docker
     desktop above this will be included)
-  - [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
+    - [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
     the advanced getting started guide below).
 3.  Follow either the [Standalone](#standalone) (simple, free) or
     [With Remote Peer](#with-remote-peer) (advanced, may incur costs) sections below
