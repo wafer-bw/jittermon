@@ -48,14 +48,14 @@ Docker.
    version [here](https://github.com/wafer-bw/jittermon/releases).
 2. Ensure you have the following requirements installed:
     - [docker](https://www.docker.com/get-started/) (if you aren't sure how to
-    install use the Download Docker Desktop button)
+      install use the Download Docker Desktop button)
     - [docker compose](https://docs.docker.com/compose/) (if you installed docker
-    desktop above this will be included)
+      desktop above this will be included)
     - [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
-    the advanced getting started guide below).
-3.  Follow either the [Standalone](#standalone) (simple, free) or
-    [With Remote Peer](#with-remote-peer) (advanced, may incur costs) section below
-    to get started.
+      the advanced getting started guide below).
+3. Follow either the [Standalone](#standalone) (simple, free) or
+   [With Remote Peer](#with-remote-peer) (advanced, may incur costs) section below
+   to get started.
 
 > [!NOTE]
 > Attention Windows Users: After installing docker desktop above you'll likely
