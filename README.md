@@ -54,7 +54,7 @@ Docker.
     - [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
     the advanced getting started guide below).
 3.  Follow either the [Standalone](#standalone) (simple, free) or
-    [With Remote Peer](#with-remote-peer) (advanced, may incur costs) sections below
+    [With Remote Peer](#with-remote-peer) (advanced, may incur costs) section below
     to get started.
 
 > [!NOTE]
