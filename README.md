@@ -65,6 +65,8 @@ Docker.
 > where you cloned or extracted the source code which is explained [here](https://superuser.com/a/1524862).
 
 ### Standalone
+Monitor your packet loss, ping, and jitter.
+
 1. Build docker image.
     ```sh
     docker build -t jittermon .
@@ -81,8 +83,11 @@ Docker.
     ```
 
 ### With Remote Peer
-For our remote peer example, we use [fly.io](https://fly.io/) because it is
-cheap and easy. Before proceeding, review their pricing details [here](https://fly.io/pricing/)
+Monitor your packet loss, ping, jitter, upstream
+jitter, and downstream jitter.
+
+For our remote peer we're using [fly.io](https://fly.io/)
+because it is cheap and easy. Before proceeding, review their pricing details [here](https://fly.io/pricing/)
 to make sure you're comfortable with any costs you may incur. When this project
 started they had free allowances but that doesn't seem to be the case anymore as
 stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
