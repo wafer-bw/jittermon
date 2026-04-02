@@ -49,7 +49,7 @@ Docker.
 2. Ensure you have the following requirements installed:
     1. [docker](https://www.docker.com/get-started/) (if you aren't sure how
        to install, use the Download Docker Desktop button)
-    3. [docker compose]([https://docs.docker.com/compose/](https://docs.docker.com/compose/install))
+    3. [docker compose](https://docs.docker.com/compose/install)
        (skip this step if you installed docker desktop in the previous step)
     5. [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
        the advanced getting started guide below).
