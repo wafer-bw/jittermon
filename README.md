@@ -47,13 +47,13 @@ Docker.
 1. Clone the repo or download and extract the source code from the latest
    version [here](https://github.com/wafer-bw/jittermon/releases).
 2. Ensure you have the following requirements installed:
-    - [docker](https://www.docker.com/get-started/) (if you aren't sure how to
-      install use the Download Docker Desktop button)
-    - [docker compose](https://docs.docker.com/compose/) (if you installed docker
-      desktop above this will be included)
-    - [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
-      the advanced getting started guide below).
-3. Follow either the [Standalone](#standalone) (simple, free) or
+    1. [docker](https://www.docker.com/get-started/) (if you aren't sure how
+       to install, use the Download Docker Desktop button)
+    3. [docker compose]([https://docs.docker.com/compose/](https://docs.docker.com/compose/install))
+       (skip this step if you installed docker desktop in the previous step)
+    5. [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
+       the advanced getting started guide below).
+4. Follow either the [Standalone](#standalone) (basic, free) or
    [With Remote Peer](#with-remote-peer) (advanced, may incur costs) section below
    to get started.
 
@@ -65,7 +65,7 @@ Docker.
 > where you cloned or extracted the source code which is explained [here](https://superuser.com/a/1524862).
 
 ### Standalone
-Monitor your packet loss, ping, and jitter.
+Monitor your packet loss, ping, and jitter (basic).
 
 1. Build docker image.
     ```sh
@@ -83,8 +83,8 @@ Monitor your packet loss, ping, and jitter.
     ```
 
 ### With Remote Peer
-Monitor your packet loss, ping, jitter, upstream
-jitter, and downstream jitter.
+Monitor your packet loss, ping, jitter, upstream jitter, and downstream
+jitter (advanced).
 
 For our remote peer we're using [fly.io](https://fly.io/)
 because it is cheap and easy. Before proceeding, review their pricing details [here](https://fly.io/pricing/)
@@ -115,11 +115,15 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
    forwarded, and replace `YOURIPHERE` with your public IPv4 address).
     ```sh
     fly secrets set JITTERMON_PTP_SEND_ADDRS=YOURIPHERE:8081
+    # e.g.
+    # fly secrets set JITTERMON_PTP_SEND_ADDRS=123.123.123.123:8081
     ```
 5. Save the IP address of your fly app from step 2 above to `.env` (replace
    `FLYADDRESS` with the actual IPv4 address).
     ```sh
     echo JITTERMON_PTP_SEND_ADDRS=FLYADDRESS:8080 > .env
+    # e.g.
+    # echo JITTERMON_PTP_SEND_ADDRS=123.123.123.123:8080 > .env
     ```
 6. Build docker image.
     ```sh
