@@ -4,23 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "internal/**"
-      - ".github/workflows/**/*.yml"
-      - "scripts/**"
-      - "main.go"
-      - "go.mod"
-      - "go.sum"
   pull_request:
     branches:
       - main
-    paths:
-      - "internal/**"
-      - ".github/workflows/**/*.yml"
-      - "scripts/**"
-      - "main.go"
-      - "go.mod"
-      - "go.sum"
 
 jobs:
 
@@ -85,7 +71,7 @@ jobs:
       - name: Run go mod verify
         run: go mod verify
       - name: Run go fix
-        run: go fix ./...
+        run: go fix ./... && git diff --exit-code
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
       - name: Setup buf
