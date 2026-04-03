@@ -49,11 +49,11 @@ Docker.
 2. Ensure you have the following requirements installed:
     1. [docker](https://www.docker.com/get-started/) (if you aren't sure how
        to install, use the Download Docker Desktop button)
-    3. [docker compose](https://docs.docker.com/compose/install)
+    2. [docker compose](https://docs.docker.com/compose/install)
        (skip this step if you installed docker desktop in the previous step)
-    5. [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
+    3. [flyctl](https://fly.io/docs/flyctl/install/) (only if you plan to follow
        the advanced getting started guide below).
-4. Follow either the [Standalone](#standalone) (basic, free) or
+3. Follow either the [Standalone](#standalone) (basic, free) or
    [With Remote Peer](#with-remote-peer) (advanced, may incur costs) section below
    to get started.
 
@@ -107,7 +107,7 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
     # ? Would you like to allocate dedicated ipv4 and ipv6 addresses now?
     #   Yes
     ```
-4. Set the remote peer's send address to your IP address. Make sure you've port
+3. Set the remote peer's send address to your IP address. Make sure you've port
    forwarded and replace `YOURIPHERE` with your public IPv4 address (on Windows
    you will likely also have to [open the port in Windows Defender](https://learn.microsoft.com/en-us/answers/questions/3864685/how-to-do-port-forwarding-or-port-opening-in-windo)).
     ```sh
@@ -115,27 +115,24 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
     # e.g.
     # fly secrets set JITTERMON_PTP_SEND_ADDRS=123.123.123.123:8081
     ```
-5. Save the IP address of your fly app from step 2 above to `.env` (replace
+4. Save the IP address of your fly app from step 2 above to `.env` (replace
    `FLYADDRESS` with the actual IPv4 address).
     ```sh
     echo JITTERMON_PTP_SEND_ADDRS=FLYADDRESS:8080 > .env
     # e.g.
     # echo JITTERMON_PTP_SEND_ADDRS=123.123.123.123:8080 > .env
     ```
-6. Build docker image.
+5. Build docker image.
     ```sh
     docker build -t jittermon .
     ```
-7. Run the app.
+6. Run the app.
     ```sh
     docker compose up -d
     ```
-8. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b \
+7. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b \
    (username: `admin`, password: `demo`).
-9. Stop the app.
+8. Stop the app.
     ```sh
     docker compose down
     ```
-
-## TODOs
-- Have non-technical user try to follow standalone getting started.
