@@ -27,12 +27,18 @@ implementation are [here](../internal/grpcptp/grpcptp.go) and the protos are
 
 Emits ping, packet loss, upstream jitter, and downstream jitter metrics.
 
+You can provide multiple peer addresses as a comma separated list in the
+`JITTERMON_PTP_SEND_ADDRS` env var.
+
 ## Peer to External
 Peer to external address communication is performed over UDP. The client
 implementation is [here](../internal/udpptx/udpptx.go). UDP is used instead of
 ICMP so that we don't need admin/root access to the client device.
 
 Emits ping, jitter, and packet loss metrics.
+
+You can provide multiple external addresses as a comma separated list in the
+`JITTERMON_PTX_SEND_ADDRS` env var.
 
 ## Jitter Calculation
 Jitter is calculated using the implementation [here](../internal/jitter/jitter.go)
@@ -51,6 +57,10 @@ The metrics emitted by this app are:
 - `jitter`
 - `upstream.jitter`
 - `downstream.jitter`
+
+Each metric will also have a `src` label for the source (ID via the 
+`JITTERMON_ID` env var) and `dst` label for the destination (address via the
+`_ADDRS` env vars).
 
 All metrics emitted by this app as mentioned above are also sent to stdout at
 the DEBUG log level when `JITTERMON_LOG_LEVEL` is `DEBUG` or lower. However, the
