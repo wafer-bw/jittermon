@@ -83,11 +83,11 @@ Monitor your packet loss, ping, and jitter (basic).
     ```
 
 ### With Remote Peer
-Monitor your packet loss, ping, jitter, upstream jitter, and downstream
-jitter (advanced).
+Monitor your packet loss, ping, jitter, upstream jitter, and downstream jitter
+(advanced).
 
-For our remote peer we're using [fly.io](https://fly.io/)
-because it is cheap and easy. Before proceeding, review their pricing details [here](https://fly.io/pricing/)
+For our remote peer we're using [fly.io](https://fly.io/) because it is cheap
+and easy. Before proceeding, review their pricing details [here](https://fly.io/pricing/)
 to make sure you're comfortable with any costs you may incur. When this project
 started they had free allowances but that doesn't seem to be the case anymore as
 stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
