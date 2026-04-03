@@ -65,3 +65,14 @@ Each metric will also have a `src` label for the source (ID via the
 All metrics emitted by this app as mentioned above are also sent to stdout at
 the DEBUG log level when `JITTERMON_LOG_LEVEL` is `DEBUG` or lower. However, the
 dashboard log panels filter them out. You can query them [here](http://localhost:3000/explore?schemaVersion=1&panes=%7B%2211e%22:%7B%22datasource%22:%22P8E80F9AEF21F6940%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bcompose_project%3D%5C%22jittermon%5C%22,compose_service%3D%5C%22jittermon%5C%22%7D%22,%22queryType%22:%22range%22,%22datasource%22:%7B%22type%22:%22loki%22,%22uid%22:%22P8E80F9AEF21F6940%22%7D,%22editorMode%22:%22code%22,%22direction%22:%22backward%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D,%22panelsState%22:%7B%22logs%22:%7B%22visualisationType%22:%22logs%22%7D%7D%7D%7D&orgId=1).
+
+## Potential Next Steps
+As mentioned in the [author's notes](../README.md#authors-notes) I don't plan to
+take this further but I'm dropping some ideas here for anyone that may be
+interested.
+
+- An ICMP alternative to UDP which will be better for measuring ping.
+- A trace route implementation & metrics.
+- Connecting to remote peer over IPv6 would save the flat $2/mo cost of the IPv4
+  address.
+- Cheaper remote peer alternative.
