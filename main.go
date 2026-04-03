@@ -20,9 +20,9 @@ type config struct {
 	PTPListenAddr   string                   `envconfig:"PTP_LISTEN_ADDR" default:""`
 	PTPSendAddrs    []string                 `envconfig:"PTP_SEND_ADDRS" default:""`
 	PTPInterval     time.Duration            `envconfig:"PTP_INTERVAL" default:"1s"`
+	MetricsServer   otel.MetricsServerConfig `envconfig:"METRICS_SERVER"`
 	LogLevel        slog.Level               `envconfig:"LOG_LEVEL" default:"INFO"`
 	ShutdownTimeout time.Duration            `envconfig:"SHUTDOWN_TIMEOUT" default:"5s"`
-	MetricsServer   otel.MetricsServerConfig `envconfig:"METRICS_SERVER"`
 }
 
 func main() {
