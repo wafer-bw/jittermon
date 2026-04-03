@@ -96,7 +96,7 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
    own [region](https://fly.io/docs/reference/regions).
 2. Deploy to fly
     ```sh
-    fly launch
+    fly launch --ha=false
     # when executing the above follow these choices for the prompts:
     # ? Would you like to copy its configuration to the new app?
     #   Yes
@@ -107,12 +107,9 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
     # ? Would you like to allocate dedicated ipv4 and ipv6 addresses now?
     #   Yes
     ```
-3. Scale the deployment down to one machine. We don't need or want multiple.
-    ```sh
-    fly scale count 1
-    ```
-4. Set the remote peer's send address to your IP address (make sure you've port
-   forwarded, and replace `YOURIPHERE` with your public IPv4 address).
+4. Set the remote peer's send address to your IP address. Make sure you've port
+   forwarded and replace `YOURIPHERE` with your public IPv4 address (on Windows
+   you will likely also have to [open the port in Windows Defender](https://learn.microsoft.com/en-us/answers/questions/3864685/how-to-do-port-forwarding-or-port-opening-in-windo)).
     ```sh
     fly secrets set JITTERMON_PTP_SEND_ADDRS=YOURIPHERE:8081
     # e.g.
