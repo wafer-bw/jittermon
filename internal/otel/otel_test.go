@@ -75,7 +75,7 @@ func TestStartMetricsServer(t *testing.T) {
 			if err != nil {
 				return false
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return resp.StatusCode == http.StatusOK
 		}, 1*time.Second, 10*time.Millisecond)
 
@@ -111,7 +111,7 @@ func TestStartMetricsServer(t *testing.T) {
 			if err != nil {
 				return false
 			}
-			conn.Close()
+			_ = conn.Close()
 			return true
 		}, 1*time.Second, 10*time.Millisecond)
 

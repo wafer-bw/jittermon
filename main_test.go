@@ -72,7 +72,7 @@ func TestRun(t *testing.T) {
 			if err != nil {
 				return false
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return resp.StatusCode == http.StatusOK
 		}, 1*time.Second, 50*time.Millisecond)
 
