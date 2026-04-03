@@ -51,8 +51,8 @@ type Client struct {
 	PingHistogram           Float64Histogram
 	UpstreamJitterHistogram Float64Histogram
 
-	Interval    time.Duration
-	Timeout     time.Duration
+	Interval    time.Duration // uses [defaultInterval] if not set.
+	Timeout     time.Duration // uses [Client.Interval] if not set.
 	DialOptions []grpc.DialOption
 	Log         *slog.Logger
 	Conn        ClientPoller

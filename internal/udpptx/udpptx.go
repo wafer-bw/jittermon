@@ -42,8 +42,8 @@ type Client struct {
 	PingHistogram      Float64Histogram
 	JitterHistogram    Float64Histogram
 
-	Interval time.Duration
-	Timeout  time.Duration
+	Interval time.Duration // uses [defaultInterval] if not set.
+	Timeout  time.Duration // uses [Client.Interval] if not set.
 	Log      *slog.Logger
 
 	pollGrace int
