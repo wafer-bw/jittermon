@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -16,7 +14,7 @@ import (
 )
 
 type config struct {
-	ID              string                   `envconfig:"ID" default:""`
+	ID              string                   `envconfig:"ID" required:"true"`
 	PTXAddrs        []string                 `envconfig:"PTX_ADDRS" default:""`
 	PTXInterval     time.Duration            `envconfig:"PTX_INTERVAL" default:"1s"`
 	PTPListenAddr   string                   `envconfig:"PTP_LISTEN_ADDR" default:""`
@@ -30,22 +28,24 @@ type config struct {
 func main() {
 	ctx := context.Background()
 
-	cfg := config{MetricsServer: otel.MetricsServerConfig{StoppingCh: make(chan struct{})}}
-	envconfig.MustProcess("JITTERMON", &cfg)
+	cfg := config{
+		MetricsServer: otel.MetricsServerConfig{StoppingCh: make(chan struct{})},
+	}
+
+	if err := envconfig.Process("JITTERMON", &cfg); err != nil {
+		slog.Default().ErrorContext(ctx, err.Error())
+		os.Exit(1)
+	}
+
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel}))
 
 	if err := run(ctx, log, cfg); err != nil {
-		log.Error(err.Error())
+		log.ErrorContext(ctx, err.Error())
 		os.Exit(1)
 	}
 }
 
 func run(ctx context.Context, log *slog.Logger, cfg config) error {
-	cfg.ID = strings.TrimSpace(cfg.ID)
-	if cfg.ID == "" {
-		return errors.New("JITTERMON_ID environment variable is required")
-	}
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
