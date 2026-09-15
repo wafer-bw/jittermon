@@ -49,7 +49,7 @@ jobs:
       - run: go run golang.org/x/vuln/cmd/govulncheck ./...
       - uses: bufbuild/buf-action@v1
         with: { setup_only: true }
-      - run: go run golang.org/x/tools/cmd/goimports -w . && git diff --exit-code
+      - run: github.com/daixiang0/gci write -s standard -s default --skip-generated . && git diff --exit-code
       - run: buf format -w
 
   lint:

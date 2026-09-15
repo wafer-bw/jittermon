@@ -235,10 +235,10 @@ require (
 )
 
 tool (
+	github.com/daixiang0/gci
 	github.com/golang/mock/mockgen
 	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 	go.uber.org/mock/mockgen
-	golang.org/x/tools/cmd/goimports
 	golang.org/x/vuln/cmd/govulncheck
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	google.golang.org/protobuf/cmd/protoc-gen-go
