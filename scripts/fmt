@@ -3,7 +3,7 @@
 set -e
 
 # format Go code
-go run github.com/daixiang0/gci write -s standard -s default --skip-generated .
+go run golang.org/x/tools/cmd/goimports -w .
 
 # format protos
 buf format -w

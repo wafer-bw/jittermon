@@ -132,7 +132,7 @@ func (c *Client) poll(_ context.Context) error {
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	if err := conn.SetReadDeadline(time.Now().Add(c.Timeout)); err != nil {
 		return fmt.Errorf("set read deadline: %w", err)

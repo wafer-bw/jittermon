@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"time"
 
@@ -229,8 +230,8 @@ func StartMetricsServer(ctx context.Context, log *slog.Logger, cfg MetricsServer
 
 // use wraps an [http.Handler] with the provided middlewares.
 func use(handler http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
-	for i := len(middlewares) - 1; i >= 0; i-- {
-		handler = middlewares[i](handler)
+	for _, middleware := range slices.Backward(middlewares) {
+		handler = middleware(handler)
 	}
 	return handler
 }

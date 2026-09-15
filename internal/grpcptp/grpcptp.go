@@ -138,7 +138,7 @@ func (c *Client) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		c.Conn = pollpb.NewPollServiceClient(conn)
 	}
 
@@ -245,7 +245,7 @@ func (s *Server) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	errCh := make(chan error, 1)
 	go func() {
