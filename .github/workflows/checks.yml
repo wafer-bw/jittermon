@@ -31,7 +31,7 @@ jobs:
       - run: go generate ./... && git diff --exit-code
       - uses: bufbuild/buf-action@v1
         with: { setup_only: true }
-      - run: buf generate
+      - run: buf generate && git diff --exit-code
       - run: go build -o /dev/null ./...
 
   clean:
@@ -47,10 +47,10 @@ jobs:
       - run: go mod verify
       - run: go fix ./... && git diff --exit-code
       - run: go run golang.org/x/vuln/cmd/govulncheck ./...
+      - run: go rungithub.com/daixiang0/gci write -s standard -s default --skip-generated . && git diff --exit-code
       - uses: bufbuild/buf-action@v1
         with: { setup_only: true }
       - run: buf format -w && git diff --exit-code
-      - run: github.com/daixiang0/gci write -s standard -s default --skip-generated . && git diff --exit-code
 
   lint:
     name: lint
