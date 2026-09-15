@@ -1,7 +1,3 @@
 version: "2"
 run:
-  go: "1.26"
-linters:
-  exclusions:
-    presets:
-      - std-error-handling
+  go: "1.27"

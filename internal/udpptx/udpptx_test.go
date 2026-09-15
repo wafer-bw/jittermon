@@ -50,7 +50,7 @@ func TestClient_Poll(t *testing.T) {
 		go func() {
 			conn, err := net.ListenPacket("udp", addr)
 			require.NoError(t, err)
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			close(readyCh)
 			for {
@@ -158,7 +158,7 @@ func TestClient_Start(t *testing.T) {
 		go func() {
 			conn, err := net.ListenPacket("udp", addr)
 			require.NoError(t, err)
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			close(readyCh)
 			for {

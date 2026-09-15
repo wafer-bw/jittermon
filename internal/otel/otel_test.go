@@ -132,7 +132,7 @@ func TestStartMetricsServer(t *testing.T) {
 
 		listener, err := net.Listen("tcp", addr) // occupy port so server start fails.
 		require.NoError(t, err)
-		defer listener.Close()
+		defer func() { _ = listener.Close() }()
 
 		cfg := otel.MetricsServerConfig{}
 		err = envconfig.Process("", &cfg)

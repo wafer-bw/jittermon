@@ -394,7 +394,7 @@ func TestServer_Start(t *testing.T) {
 
 		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		client := pollpb.NewPollServiceClient(conn)
 
 		require.Eventually(t, func() bool {
