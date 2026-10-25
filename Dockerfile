@@ -1,5 +1,5 @@
 # build binary
-FROM golang:1.26.5 AS builder
+FROM golang:1.27.3 AS builder
 WORKDIR /jittermon
 COPY . .
 RUN go mod download \
