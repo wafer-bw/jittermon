@@ -8,8 +8,5 @@ RUN go mod download \
 
 # build image
 FROM scratch
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /go/bin/main /go/bin/main
-WORKDIR /go/bin
-ENTRYPOINT ["./main"]
+ENTRYPOINT ["/go/bin/main"]
