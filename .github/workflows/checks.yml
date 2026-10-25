@@ -19,11 +19,71 @@ jobs:
       - uses: actions/setup-go@v7
         with: { go-version-file: 'go.mod', cache: true }
 
+  clean:
+    name: clean
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: setup
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - run: go mod tidy && git diff --exit-code
+      - run: go mod verify
+      - run: go fix ./... && git diff --exit-code
+      - run: go run golang.org/x/vuln/cmd/govulncheck ./...
+      - run: go run github.com/daixiang0/gci write -s standard -s default --skip-generated . && git diff --exit-code
+      - uses: bufbuild/buf-action@v1
+        with: { setup_only: true }
+      - run: buf format -w && git diff --exit-code
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    needs: clean
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - uses: golangci/golangci-lint-action@v9
+        with: { version: latest }
+      - uses: bufbuild/buf-action@v1
+        with: { setup_only: true }
+      - run: buf lint
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: clean
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - run: go test -shuffle=on -v -count=1 -race -failfast -timeout=30s -covermode=atomic -coverprofile=coverage.txt `go list ./... | grep -v /internal/gen`
+      - uses: codecov/codecov-action@v7
+        with: { token: "${{ secrets.CODECOV_TOKEN }}", slug: wafer-bw/jittermon }
+
+  benchmark:
+    name: benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: clean
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - run: go test -v -shuffle=on -run=- -bench=. -benchtime=1x -timeout=1m ./...
+
   build:
     name: build
     runs-on: ubuntu-latest
     timeout-minutes: 3
-    needs: setup
+    needs:
+      - lint
+      - test
+      - benchmark
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -49,60 +109,3 @@ jobs:
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  clean:
-    name: clean
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    needs: setup
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with: { go-version-file: 'go.mod', cache: true }
-      - run: go mod tidy && git diff --exit-code
-      - run: go mod verify
-      - run: go fix ./... && git diff --exit-code
-      - run: go run golang.org/x/vuln/cmd/govulncheck ./...
-      - run: go run github.com/daixiang0/gci write -s standard -s default --skip-generated . && git diff --exit-code
-      - uses: bufbuild/buf-action@v1
-        with: { setup_only: true }
-      - run: buf format -w && git diff --exit-code
-
-  lint:
-    name: lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 4
-    needs: setup
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with: { go-version-file: 'go.mod', cache: true }
-      - uses: golangci/golangci-lint-action@v9
-        with: { version: latest }
-      - uses: bufbuild/buf-action@v1
-        with: { setup_only: true }
-      - run: buf lint
-
-  test:
-    name: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: setup
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with: { go-version-file: 'go.mod', cache: true }
-      - run: go test -shuffle=on -v -count=1 -race -failfast -timeout=30s -covermode=atomic -coverprofile=coverage.txt `go list ./... | grep -v /internal/gen`
-      - uses: codecov/codecov-action@v7
-        with: { token: "${{ secrets.CODECOV_TOKEN }}", slug: wafer-bw/jittermon }
-
-  benchmark:
-    name: benchmark
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    needs: setup
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with: { go-version-file: 'go.mod', cache: true }
-      - run: go test -v -shuffle=on -run=- -bench=. -benchtime=1x -timeout=1m ./...
