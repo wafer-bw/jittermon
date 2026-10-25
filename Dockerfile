@@ -2,9 +2,10 @@
 FROM --platform=$BUILDPLATFORM golang:1.27.3 AS builder
 ARG TARGETOS TARGETARCH
 WORKDIR /jittermon
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-RUN go mod download \
-    && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-w -s -extldflags '-static'" -a -o /go/bin/main .
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-w -s -extldflags '-static'" -a -o /go/bin/main .
 
 # build image
 FROM scratch
