@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with: { go-version-file: 'go.mod', cache: true }
+      - run: go mod download
 
   clean:
     name: clean
@@ -31,8 +32,8 @@ jobs:
       - run: go mod tidy && git diff --exit-code
       - run: go mod verify
       - run: go fix ./... && git diff --exit-code
-      - run: go run golang.org/x/vuln/cmd/govulncheck ./...
-      - run: go run github.com/daixiang0/gci write -s standard -s default --skip-generated . && git diff --exit-code
+      - run: go tool govulncheck ./...
+      - run: go tool gci write -s standard -s default --skip-generated . && git diff --exit-code
       - uses: bufbuild/buf-action@v1
         with: { setup_only: true }
       - run: buf format -w && git diff --exit-code

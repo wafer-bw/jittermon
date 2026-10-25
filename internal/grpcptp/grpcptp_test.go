@@ -1,6 +1,6 @@
 package grpcptp_test
 
-//go:generate go run go.uber.org/mock/mockgen -source=grpcptp.go -destination=grpcptp_mocks_test.go -package=grpcptp_test
+//go:generate go tool mockgen -source=grpcptp.go -destination=grpcptp_mocks_test.go -package=grpcptp_test
 
 import (
 	"bytes"
