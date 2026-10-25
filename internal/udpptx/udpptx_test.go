@@ -1,6 +1,6 @@
 package udpptx_test
 
-//go:generate go run go.uber.org/mock/mockgen -source=udpptx.go -destination=udpptx_mocks_test.go -package=udpptx_test
+//go:generate go tool mockgen -source=udpptx.go -destination=udpptx_mocks_test.go -package=udpptx_test
 
 import (
 	"bytes"
