@@ -67,17 +67,13 @@ Docker.
 ### Standalone
 Monitor your packet loss, ping, and jitter (basic).
 
-1. Build docker image.
-    ```sh
-    docker build -t jittermon .
-    ```
-2. Run the app.
+1. Run the app.
     ```sh
     docker compose up -d
     ```
-3. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b \
+2. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b \
    (username: `admin`, password: `demo`).
-4. Stop the app.
+3. Stop the app.
     ```sh
     docker compose down
     ```
@@ -122,17 +118,13 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
     # e.g.
     # echo JITTERMON_PTP_SEND_ADDRS=123.123.123.123:8080 > .env
     ```
-5. Build docker image.
-    ```sh
-    docker build -t jittermon .
-    ```
-6. Run the app.
+5. Run the app.
     ```sh
     docker compose up -d
     ```
-7. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b \
+6. View metrics in your browser at http://localhost:3000/d/aec2tnhcwbuo0b \
    (username: `admin`, password: `demo`).
-8. Stop the app.
+7. Stop the app.
     ```sh
     docker compose down
     ```

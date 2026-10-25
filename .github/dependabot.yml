@@ -21,3 +21,13 @@ updates:
       all-dependencies:
         patterns:
           - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "yearly"
+    target-branch: "main"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
