@@ -24,7 +24,8 @@
     {
       "datasource": {
         "name": "Prometheus",
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "${metrics}"
       },
       "fieldConfig": {
         "defaults": {
@@ -232,7 +233,8 @@
         {
           "datasource": {
             "name": "Prometheus",
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "${metrics}"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -247,7 +249,8 @@
         {
           "datasource": {
             "name": "Prometheus",
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "${metrics}"
           },
           "editorMode": "code",
           "expr": "sum(rate(upstream_jitter_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(upstream_jitter_seconds_count{}[$__rate_interval])) by (src) > 0",
@@ -260,7 +263,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${metrics}"
           },
           "editorMode": "code",
           "expr": "sum(rate(ping_seconds_sum{}[$__rate_interval])) by (src) / sum(rate(ping_seconds_count{}[$__rate_interval])) by (src) > 0",
@@ -273,7 +276,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${metrics}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -287,7 +290,8 @@
         {
           "datasource": {
             "name": "Prometheus",
-            "type": "prometheus"
+            "type": "prometheus",
+            "uid": "${metrics}"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -317,7 +321,7 @@
         {
           "datasource": {
             "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
+            "uid": "${logs}"
           },
           "fieldConfig": {
             "defaults": {
@@ -464,7 +468,7 @@
             {
               "datasource": {
                 "type": "loki",
-                "uid": "P8E80F9AEF21F6940"
+                "uid": "${logs}"
               },
               "direction": "backward",
               "editorMode": "code",
@@ -480,7 +484,7 @@
         {
           "datasource": {
             "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
+            "uid": "${logs}"
           },
           "fieldConfig": {
             "defaults": {},
@@ -509,7 +513,7 @@
             {
               "datasource": {
                 "type": "loki",
-                "uid": "P8E80F9AEF21F6940"
+                "uid": "${logs}"
               },
               "direction": "backward",
               "editorMode": "code",
@@ -532,7 +536,34 @@
   "schemaVersion": 41,
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Metrics",
+        "multi": false,
+        "name": "metrics",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Logs",
+        "multi": false,
+        "name": "logs",
+        "options": [],
+        "query": "loki",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      }
+    ]
   },
   "time": {
     "from": "now-1h",

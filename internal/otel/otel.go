@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -34,6 +36,8 @@ const (
 
 	SourceLabelName      string = "src"
 	DestinationLabelName string = "dst"
+
+	otlpProtocolHTTPProtobuf string = "http/protobuf"
 )
 
 var (
@@ -167,10 +171,23 @@ func Setup(ctx context.Context, id string) (shutdown func(context.Context) error
 	if err != nil {
 		return shutdown, errors.Join(err, shutdown(ctx))
 	}
-	meterProvider := sdkmetric.NewMeterProvider(
+	meterProviderOptions := []sdkmetric.Option{
 		sdkmetric.WithResource(resource),
 		sdkmetric.WithReader(meterExporter),
-	)
+	}
+
+	if otlpEnabled() {
+		if protocol := otlpProtocol(); protocol != otlpProtocolHTTPProtobuf {
+			return shutdown, errors.Join(fmt.Errorf("unsupported otlp protocol %q, only %q is supported", protocol, otlpProtocolHTTPProtobuf), shutdown(ctx))
+		}
+		otlpExporter, err := otlpmetrichttp.New(ctx)
+		if err != nil {
+			return shutdown, errors.Join(err, shutdown(ctx))
+		}
+		meterProviderOptions = append(meterProviderOptions, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(otlpExporter)))
+	}
+
+	meterProvider := sdkmetric.NewMeterProvider(meterProviderOptions...)
 	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
 	otel.SetMeterProvider(meterProvider)
 
@@ -226,6 +243,14 @@ func StartMetricsServer(ctx context.Context, log *slog.Logger, cfg MetricsServer
 		log.ErrorContext(ctx, "server failed", "name", name, "err", err)
 		return err
 	}
+}
+
+func otlpEnabled() bool {
+	return os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT") != "" || os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != ""
+}
+
+func otlpProtocol() string {
+	return cmp.Or(os.Getenv("OTEL_EXPORTER_OTLP_METRICS_PROTOCOL"), os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL"), otlpProtocolHTTPProtobuf)
 }
 
 // use wraps an [http.Handler] with the provided middlewares.

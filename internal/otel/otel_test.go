@@ -37,6 +37,45 @@ func TestSetup(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("pushes metrics to otlp endpoint", func(t *testing.T) {
+		receivedCh := make(chan string, 10)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			receivedCh <- r.URL.Path + " " + r.Header.Get("Authorization")
+			w.WriteHeader(http.StatusOK)
+		}))
+		t.Cleanup(srv.Close)
+
+		t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", srv.URL)
+		t.Setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
+		t.Setenv("OTEL_EXPORTER_OTLP_HEADERS", "Authorization=Basic dGVzdA==")
+
+		ctx := t.Context()
+
+		shutdown, err := otel.Setup(ctx, "test-instance")
+		require.NoError(t, err)
+
+		otel.SentPacketsCounter.Add(ctx, 1)
+
+		err = shutdown(ctx) // shutdown flushes pending metrics.
+		require.NoError(t, err)
+
+		select {
+		case got := <-receivedCh:
+			require.Equal(t, "/v1/metrics Basic dGVzdA==", got)
+		case <-time.After(time.Second):
+			t.Fatal("no metrics received by otlp endpoint")
+		}
+	})
+
+	t.Run("returns error on unsupported otlp protocol", func(t *testing.T) {
+		t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+		t.Setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")
+
+		_, err := otel.Setup(t.Context(), "test-instance")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unsupported otlp protocol")
+	})
+
 	t.Run("returns error when id is empty", func(t *testing.T) {
 		_, err := otel.Setup(t.Context(), "")
 		require.Error(t, err)

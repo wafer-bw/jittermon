@@ -38,7 +38,7 @@ ICMP so that we don't need admin/root access to the client device.
 Emits ping, jitter, and packet loss metrics.
 
 You can provide multiple external addresses as a comma separated list in the
-`JITTERMON_PTX_SEND_ADDRS` env var.
+`JITTERMON_PTX_ADDRS` env var.
 
 ## Jitter Calculation
 Jitter is calculated using the implementation [here](../internal/jitter/jitter.go)
@@ -50,6 +50,12 @@ dashboard can be updated by saving its JSON representation [here](../app/grafana
 which Grafana will prompt you to do if you attempt to edit & save it in your
 browser.
 
+Metrics are always served in Prometheus format on
+`JITTERMON_METRICS_SERVER_ADDR` and are additionally pushed over OTLP
+(`http/protobuf`) when `OTEL_EXPORTER_OTLP_ENDPOINT` or
+`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` is set. The OTLP exporter is configured
+entirely by the standard `OTEL_*` env vars.
+
 The metrics emitted by this app are:
 - `sent.packets`
 - `lost.packets`
@@ -58,7 +64,7 @@ The metrics emitted by this app are:
 - `upstream.jitter`
 - `downstream.jitter`
 
-Each metric will also have a `src` label for the source (ID via the 
+Each metric will also have a `src` label for the source (ID via the
 `JITTERMON_ID` env var) and `dst` label for the destination (address via the
 `_ADDRS` env vars).
 

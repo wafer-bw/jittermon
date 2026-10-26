@@ -3,7 +3,7 @@
 set -e
 
 # format Go code
-go tool gci write -s standard -s default --skip-generated .
+go fmt ./...
 
 # format protos
 buf format -w

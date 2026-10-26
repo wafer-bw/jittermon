@@ -44,12 +44,13 @@ func TestRun(t *testing.T) {
 		log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 		cfg := config{
-			ID:            "test-instance",
-			PTPListenAddr: ptpAddr,
-			PTPSendAddrs:  []string{ptpAddr},
-			PTPInterval:   250 * time.Millisecond,
-			PTXAddrs:      []string{ptxAddr},
-			PTXInterval:   250 * time.Millisecond,
+			ID:              "test-instance",
+			PTPListenAddr:   ptpAddr,
+			PTPSendAddrs:    []string{ptpAddr},
+			PTPInterval:     250 * time.Millisecond,
+			PTXAddrs:        []string{ptxAddr},
+			PTXInterval:     250 * time.Millisecond,
+			ShutdownTimeout: 1 * time.Second,
 			MetricsServer: otel.MetricsServerConfig{
 				Address:        metricsAddr,
 				MaxHeaderBytes: 32000,
