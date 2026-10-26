@@ -95,7 +95,7 @@ jobs:
       - run: go build -o /dev/null ./...
 
   docker:
-    name: docker build
+    name: docker
     runs-on: ubuntu-latest
     timeout-minutes: 8
     strategy:
