@@ -163,8 +163,6 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          # releases are immutable once published so binaries can only be
-          # uploaded to a draft, which the publish job publishes afterwards.
           if IS_DRAFT=$(gh release view "$TAG" --json isDraft --jq .isDraft 2> /dev/null); then
             if [ "$IS_DRAFT" != "true" ]; then
               echo "release $TAG is already published, binaries can't be uploaded to it"
