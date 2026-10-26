@@ -1,0 +1,223 @@
+name: cicd
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
+      - v[0-9]+.[0-9]+.[0-9]+-alpha.[0-9]+
+      - v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+
+      - v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "*"
+
+permissions:
+  contents: read
+
+jobs:
+
+  clean:
+    name: clean
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - uses: bufbuild/buf-action@v1
+        with: { setup_only: true }
+      - run: go mod tidy && git diff --exit-code
+      - run: go mod verify
+      - run: go fix ./... && git diff --exit-code
+      - run: go fmt ./... && git diff --exit-code
+      - run: buf format -w && git diff --exit-code
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - uses: golangci/golangci-lint-action@v9
+        with: { version: latest }
+      - uses: bufbuild/buf-action@v1
+        with: { setup_only: true }
+      - run: buf lint
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - run: go test -shuffle=on -v -count=1 -race -failfast -timeout=30s -covermode=atomic -coverprofile=coverage.txt `go list ./... | grep -v /internal/gen`
+      - uses: codecov/codecov-action@v7
+        with: { token: "${{ secrets.CODECOV_TOKEN }}", slug: wafer-bw/jittermon }
+
+  benchmark:
+    name: benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - run: go test -v -shuffle=on -run=- -bench=. -benchtime=1x -timeout=1m ./...
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - uses: bufbuild/buf-action@v1
+        with: { setup_only: true }
+      - run: go generate ./... && git diff --exit-code
+      - run: buf generate && git diff --exit-code
+      - run: go build -o /dev/null ./...
+
+  docker:
+    name: docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: true
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  image:
+    name: push image to ghcr
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - clean
+      - lint
+      - test
+      - benchmark
+      - build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - id: meta
+        uses: docker/metadata-action@v6
+        with: { images: "ghcr.io/${{ github.repository }}", tags: "type=semver,pattern={{version}}" }
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    name: create github release
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: write
+    needs:
+      - clean
+      - lint
+      - test
+      - benchmark
+      - build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "release $TAG already exists"
+            exit 0
+          fi
+          PRERELEASE=""
+          case "$TAG" in *-*) PRERELEASE="--prerelease" ;; esac
+          gh release create "$TAG" --verify-tag --generate-notes $PRERELEASE
+
+  binaries:
+    name: release binaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      contents: write
+    needs:
+      - release
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: linux, goarch: arm, goarm: "7" }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: darwin, goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+          - { goos: windows, goarch: arm64 }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: 'go.mod', cache: true }
+      - env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+        run: |
+          EXT=""
+          if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+          mkdir -p dist
+          go build -trimpath -ldflags="-w -s" -o "dist/jittermon$EXT" .
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          NAME: jittermon_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.goarm && format('v{0}', matrix.goarm) || '' }}
+        run: |
+          cp LICENSE README.md dist/
+          cd dist
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            ARCHIVE="$NAME.zip"
+            zip -q "../$ARCHIVE" *
+          else
+            ARCHIVE="$NAME.tar.gz"
+            tar -czf "../$ARCHIVE" *
+          fi
+          cd ..
+          gh release upload "$TAG" "$ARCHIVE" --clobber

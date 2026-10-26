@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -14,7 +16,7 @@ import (
 )
 
 type config struct {
-	ID              string                   `envconfig:"ID" required:"true"`
+	ID              string                   `envconfig:"ID"` // defaults to [os.Hostname].
 	PTXAddrs        []string                 `envconfig:"PTX_ADDRS" default:""`
 	PTXInterval     time.Duration            `envconfig:"PTX_INTERVAL" default:"1s"`
 	PTPListenAddr   string                   `envconfig:"PTP_LISTEN_ADDR" default:""`
@@ -26,7 +28,8 @@ type config struct {
 }
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	cfg := config{
 		MetricsServer: otel.MetricsServerConfig{StoppingCh: make(chan struct{})},
@@ -37,9 +40,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	if cfg.ID == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			slog.Default().ErrorContext(ctx, "JITTERMON_ID not set and unable to determine hostname", "err", err)
+			os.Exit(1)
+		}
+		cfg.ID = hostname
+	}
+
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel}))
 
-	if err := run(ctx, log, cfg); err != nil {
+	if err := run(ctx, log, cfg); err != nil && ctx.Err() == nil {
 		log.ErrorContext(ctx, err.Error())
 		os.Exit(1)
 	}
@@ -53,11 +65,19 @@ func run(ctx context.Context, log *slog.Logger, cfg config) error {
 	if err != nil {
 		return err
 	}
-	defer otelShutdown(ctx) //nolint:errcheck // deferred shutdown.
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cfg.ShutdownTimeout)
+		defer cancel()
+		if err := otelShutdown(shutdownCtx); err != nil {
+			log.ErrorContext(ctx, "otel shutdown failed", "err", err)
+		}
+	}()
 
 	eg, ctx := errgroup.WithContext(ctx)
 
-	eg.Go(func() error { return otel.StartMetricsServer(ctx, log, cfg.MetricsServer) })
+	if cfg.MetricsServer.Address != "" {
+		eg.Go(func() error { return otel.StartMetricsServer(ctx, log, cfg.MetricsServer) })
+	}
 
 	for _, addr := range cfg.PTXAddrs {
 		client := udpptx.Client{

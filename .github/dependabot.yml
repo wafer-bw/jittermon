@@ -6,6 +6,9 @@ updates:
     directory: "/"
     schedule:
       interval: "yearly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
     target-branch: "main"
     groups:
       all-dependencies:
@@ -26,6 +29,9 @@ updates:
     directory: "/"
     schedule:
       interval: "yearly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
     target-branch: "main"
     groups:
       all-dependencies:
