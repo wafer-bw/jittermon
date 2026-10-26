@@ -60,8 +60,7 @@ Docker.
    below to get started.
 
 Prefer not to use docker? See [Without Docker](#without-docker). Want your
-dashboards in the cloud instead of on your machine? See
-[Grafana Cloud](#grafana-cloud).
+dashboards in the cloud instead of on your machine? See [Grafana Cloud](#grafana-cloud).
 
 > [!NOTE]
 > Attention Windows Users: After installing docker desktop above you'll likely
@@ -136,16 +135,15 @@ stated [here](https://fly.io/docs/about/pricing/#legacy-free-allowances).
    ```
 
 ### Grafana Cloud
-Push metrics to [Grafana Cloud](https://grafana.com/products/cloud/) over
-[OTLP](https://opentelemetry.io/docs/specs/otlp/) in addition to, or instead of,
-the local Grafana stack. This works with any of the setups above or below and
-the free tier is plenty for a single host.
+Push metrics to [Grafana Cloud](https://grafana.com/products/cloud/) over [OTLP](https://opentelemetry.io/docs/specs/otlp/)
+in addition to, or instead of, the local Grafana stack. This works with any of
+the setups above or below and the free tier is plenty for a single host.
 
-1. In the [Grafana Cloud portal](https://grafana.com/orgs) open your stack, find the **OpenTelemetry** tile
-   and click **Configure**. Generate an API token and copy the environment
-   variables it shows you.
-2. Add them to `.env` (or set them in your shell if running
-   [without docker](#without-docker)). They will look something like this:
+1. In the [Grafana Cloud portal](https://grafana.com/orgs) open your stack, find
+   the **OpenTelemetry** tile and click **Configure**. Generate an API token and
+   copy the environment variables it shows you.
+2. Add them to `.env` (or set them in your shell if running [without docker](#without-docker)).
+   They will look something like this:
    ```sh
    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
    OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-0.grafana.net/otlp
@@ -157,10 +155,10 @@ the free tier is plenty for a single host.
    ```sh
    docker compose up -d --no-deps jittermon
    ```
-4. In Grafana Cloud go to **Dashboards > New > Import**, upload
-   [default.json](./app/grafana/dashboards/default.json), then pick your
-   `grafanacloud-*-prom` data source from the **Metrics** dropdown at the top
-   of the dashboard. The log panels only work with the local stack.
+4. In Grafana Cloud go to **Dashboards > New > Import**, upload [default.json](./app/grafana/dashboards/default.json),
+   then pick your `grafanacloud-*-prom` data source from the **Metrics**
+   dropdown at the top of the dashboard. The log panels only work with the local
+   stack.
 
 Only the `http/protobuf` OTLP protocol is supported. Any of the standard
 [OTLP exporter env vars](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/)
@@ -171,12 +169,11 @@ Run jittermon directly on Windows, macOS, or Linux. Without docker there is no
 local Grafana so pair this with [Grafana Cloud](#grafana-cloud), or point your
 own Prometheus at http://localhost:8082/metrics.
 
-1. Download the archive for your OS and CPU from the latest
-   [release](https://github.com/wafer-bw/jittermon/releases) and extract it.
-   (`amd64` is most Intel/AMD machines, `arm64` is Apple Silicon and newer ARM
-   machines, `armv7` is older Raspberry Pis.)
-2. Configure it with environment variables (see
-   [Configuration](#configuration)) and run it from the extracted folder.
+1. Download the archive for your OS and CPU from the latest [release](https://github.com/wafer-bw/jittermon/releases)
+   and extract it. (`amd64` is most Intel/AMD machines, `arm64` is Apple Silicon
+   and newer ARM machines, `armv7` is older Raspberry Pis.)
+2. Configure it with environment variables (see [Configuration](#configuration))
+   and run it from the extracted folder.
    ```sh
    # macOS / Linux
    export JITTERMON_PTX_ADDRS=8.8.8.8:53
@@ -199,22 +196,22 @@ own Prometheus at http://localhost:8082/metrics.
 > may show a SmartScreen warning you'll need to click through.
 
 > [!TIP]
-> You can also build it yourself with [go](https://go.dev/doc/install) by running
-> `go build .` in the source folder.
+> You can also build it yourself with [go](https://go.dev/doc/install) by
+> running `go build .` in the source folder.
 
 ## Configuration
 Jittermon is configured with environment variables. When using docker compose
 put overrides in `.env`.
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `JITTERMON_ID` | hostname | Name of this host, used as the `src`/`dst` label on metrics. |
-| `JITTERMON_PTX_ADDRS` | | Comma separated `host:port` UDP addresses to measure ping, jitter, and packet loss against (e.g. `8.8.8.8:53`). |
-| `JITTERMON_PTX_INTERVAL` | `1s` | How often to send to `JITTERMON_PTX_ADDRS`. |
-| `JITTERMON_PTP_LISTEN_ADDR` | | Address to listen on for a remote peer (e.g. `:8081`). |
-| `JITTERMON_PTP_SEND_ADDRS` | | Comma separated `host:port` addresses of remote peers. |
-| `JITTERMON_PTP_INTERVAL` | `1s` | How often to poll remote peers. |
-| `JITTERMON_METRICS_SERVER_ADDR` | `:8082` | Address to serve Prometheus metrics on. Set to empty to disable. |
-| `JITTERMON_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARN`, or `ERROR`. |
-| `JITTERMON_SHUTDOWN_TIMEOUT` | `5s` | How long to wait for pending metrics to flush on shutdown. |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | | Enables pushing metrics over OTLP, see [Grafana Cloud](#grafana-cloud). |
+| Variable                        | Default  | Description                                                                                                     |
+| ------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `JITTERMON_ID`                  | hostname | Name of this host, used as the `src`/`dst` label on metrics.                                                    |
+| `JITTERMON_PTX_ADDRS`           |          | Comma separated `host:port` UDP addresses to measure ping, jitter, and packet loss against (e.g. `8.8.8.8:53`). |
+| `JITTERMON_PTX_INTERVAL`        | `1s`     | How often to send to `JITTERMON_PTX_ADDRS`.                                                                     |
+| `JITTERMON_PTP_LISTEN_ADDR`     |          | Address to listen on for a remote peer (e.g. `:8081`).                                                          |
+| `JITTERMON_PTP_SEND_ADDRS`      |          | Comma separated `host:port` addresses of remote peers.                                                          |
+| `JITTERMON_PTP_INTERVAL`        | `1s`     | How often to poll remote peers.                                                                                 |
+| `JITTERMON_METRICS_SERVER_ADDR` | `:8082`  | Address to serve Prometheus metrics on. Set to empty to disable.                                                |
+| `JITTERMON_LOG_LEVEL`           | `INFO`   | `DEBUG`, `INFO`, `WARN`, or `ERROR`.                                                                            |
+| `JITTERMON_SHUTDOWN_TIMEOUT`    | `5s`     | How long to wait for pending metrics to flush on shutdown.                                                      |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`   |          | Enables pushing metrics over OTLP, see [Grafana Cloud](#grafana-cloud).                                         |

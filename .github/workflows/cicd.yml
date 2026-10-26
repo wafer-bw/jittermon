@@ -163,13 +163,19 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            echo "release $TAG already exists"
+          # releases are immutable once published so binaries can only be
+          # uploaded to a draft, which the publish job publishes afterwards.
+          if IS_DRAFT=$(gh release view "$TAG" --json isDraft --jq .isDraft 2> /dev/null); then
+            if [ "$IS_DRAFT" != "true" ]; then
+              echo "release $TAG is already published, binaries can't be uploaded to it"
+              exit 1
+            fi
+            echo "draft release $TAG already exists"
             exit 0
           fi
           PRERELEASE=""
           case "$TAG" in *-*) PRERELEASE="--prerelease" ;; esac
-          gh release create "$TAG" --verify-tag --generate-notes $PRERELEASE
+          gh release create "$TAG" --draft --verify-tag --generate-notes $PRERELEASE
 
   binaries:
     name: release binaries
@@ -221,3 +227,18 @@ jobs:
           fi
           cd ..
           gh release upload "$TAG" "$ARCHIVE" --clobber
+
+  publish:
+    name: publish github release
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: write
+    needs:
+      - binaries
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --draft=false
